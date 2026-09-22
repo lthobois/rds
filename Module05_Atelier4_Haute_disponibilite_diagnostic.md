@@ -15,23 +15,55 @@ Supprimer les points de défaillance uniques : Connection Broker en haute dispon
 
 # Ajout des nouveaux serveurs
 
-## \[MP\]Créez RDS-SQL1, RDS-CBROKER2 et RDS-GATEWAY2
+## \[MP\]Créez RDS-SQL1
+
+RDS-CBROKER2 et RDS-GATEWAY2 existent déjà : le script de préparation les a déployés. Seule RDS-SQL1 reste à créer.
 
 ```powershell
-foreach ($nom in "RDS-CBROKER2","RDS-GATEWAY2","RDS-SQL1") {
-    Deploy-VMTemplate -Name $nom -OperatingSystem Windows2025Full
-    Wait-VMToStart -VMName $nom
-    Get-VMIntegrationService -VMName $nom | Where-Object Id -like "*6C09BB55*" | Enable-VMIntegrationService
-}
+Deploy-VMTemplate -Name RDS-SQL1 -OperatingSystem Windows2025Full
+Wait-VMToStart -VMName RDS-SQL1
+Get-VMIntegrationService -VMName RDS-SQL1 | Where-Object Id -like "*6C09BB55*" | Enable-VMIntegrationService
 ```
 
-Appliquez ensuite la configuration TCP/IP et la jonction à l'UO **RD Servers** :
+Configurez chaque machine avant de vous en servir. Ouvrez une session avec le compte local **Administrator** et le mot de passe **P@ssw0rd**.
 
-| Serveur | Adresse IP |
-|---|---|
-| RDS-CBROKER2 | 172.16.1.116 |
-| RDS-GATEWAY2 | 172.16.1.118 |
-| RDS-SQL1 | 172.16.1.120 |
+## \[CB2\]Configurez RDS-CBROKER2
+
+```powershell
+$carte = (Get-NetAdapter | Where-Object Status -eq "Up").Name
+New-NetIPAddress -InterfaceAlias $carte -IPAddress 172.16.1.116 -PrefixLength 16 -DefaultGateway 172.16.1.254
+Set-DnsClientServerAddress -InterfaceAlias $carte -ServerAddresses 172.16.1.1
+$mdp = ConvertTo-SecureString "P@ssw0rd" -AsPlainText -Force
+$cred = New-Object System.Management.Automation.PSCredential "AVAEDOS\Administrator", $mdp
+Add-Computer -DomainName "avaedos.lan" -NewName RDS-CBROKER2 -Credential $cred `
+    -OUPath "OU=RD Servers,DC=avaedos,DC=lan" -Restart
+```
+
+## \[GTW2\]Configurez RDS-GATEWAY2
+
+```powershell
+$carte = (Get-NetAdapter | Where-Object Status -eq "Up").Name
+New-NetIPAddress -InterfaceAlias $carte -IPAddress 172.16.1.118 -PrefixLength 16 -DefaultGateway 172.16.1.254
+Set-DnsClientServerAddress -InterfaceAlias $carte -ServerAddresses 172.16.1.1
+$mdp = ConvertTo-SecureString "P@ssw0rd" -AsPlainText -Force
+$cred = New-Object System.Management.Automation.PSCredential "AVAEDOS\Administrator", $mdp
+Add-Computer -DomainName "avaedos.lan" -NewName RDS-GATEWAY2 -Credential $cred `
+    -OUPath "OU=RD Servers,DC=avaedos,DC=lan" -Restart
+```
+
+## \[SQL\]Configurez RDS-SQL1
+
+```powershell
+$carte = (Get-NetAdapter | Where-Object Status -eq "Up").Name
+New-NetIPAddress -InterfaceAlias $carte -IPAddress 172.16.1.120 -PrefixLength 16 -DefaultGateway 172.16.1.254
+Set-DnsClientServerAddress -InterfaceAlias $carte -ServerAddresses 172.16.1.1
+$mdp = ConvertTo-SecureString "P@ssw0rd" -AsPlainText -Force
+$cred = New-Object System.Management.Automation.PSCredential "AVAEDOS\Administrator", $mdp
+Add-Computer -DomainName "avaedos.lan" -NewName RDS-SQL1 -Credential $cred `
+    -OUPath "OU=RD Servers,DC=avaedos,DC=lan" -Restart
+```
+
+**Vérification :** `(Get-CimInstance Win32_ComputerSystem).Domain` renvoie **avaedos.lan** sur les trois serveurs.
 
 ## \[DC\]Ajoutez les nouveaux serveurs au groupe RDS Servers
 

@@ -11,22 +11,22 @@ lang: fr-FR
 
 Vous êtes administrateur système chez **Avaedos**. Vous construisez la plateforme de services Bureau à distance de l'entreprise sous Windows Server 2025 : ferme de sessions, applications RemoteApp, profils FSLogix, accès externe sécurisé, haute disponibilité et postes de travail virtuels Windows 11.
 
-Chaque atelier s'appuie sur le résultat du précédent. Chaque participant travaille sur son propre environnement. Les machines virtuelles sont créées au fil des ateliers, au moment où elles deviennent nécessaires.
+Chaque atelier s'appuie sur le résultat du précédent. Chaque participant travaille sur son propre environnement. Le script de préparation déploie les dix premières machines ; chacune est ensuite configurée — nom, adresse IP, jonction au domaine — dans l'atelier où elle sert pour la première fois.
 
 ## Conventions
 
 Chaque étape est précédée du nom de la machine sur laquelle elle est réalisée :
 
-| Repère | Machine | Rôle | Créée à |
+| Repère | Machine | Rôle | Configurée à |
 |---|---|---|---|
 | \[MP\] | Machine physique | Hôte Hyper-V de l'environnement | — |
 | \[DC\] | RDS-DC1 | Contrôleur de domaine, DNS, DHCP, autorité de certification, partage des profils | Préparation |
-| \[SES1\] à \[SES4\] | RDS-SESSION1 à RDS-SESSION4 | Hôtes de session | Préparation |
-| \[CB1\] / \[CB2\] | RDS-CBROKER1 / RDS-CBROKER2 | Connection Broker, licences sur RDS-CBROKER1 | Préparation / atelier 4 |
-| \[GTW1\] / \[GTW2\] | RDS-GATEWAY1 / RDS-GATEWAY2 | Accès Web et passerelle | Préparation / atelier 4 |
+| \[SES1\] à \[SES4\] | RDS-SESSION1 à RDS-SESSION4 | Hôtes de session | Atelier 1 |
+| \[CB1\] / \[CB2\] | RDS-CBROKER1 / RDS-CBROKER2 | Connection Broker, licences sur RDS-CBROKER1 | Atelier 1 / atelier 4 |
+| \[GTW1\] / \[GTW2\] | RDS-GATEWAY1 / RDS-GATEWAY2 | Accès Web et passerelle | Atelier 1 / atelier 4 |
 | \[SQL\] | RDS-SQL1 | Base de données du Connection Broker | Atelier 4 |
 | \[HV1\] / \[HV2\] | RDS-HYPERV1 / RDS-HYPERV2 | Hôtes de virtualisation VDI | Atelier 5 |
-| \[CLI\] | RDS-CLI1 | Poste Windows 11 interne, membre du domaine | Préparation |
+| \[CLI\] | RDS-CLI1 | Poste Windows 11 interne, membre du domaine | Atelier 1 |
 | \[EXT\] | RDS-EXT1 | Poste Windows 11 externe, hors domaine | Atelier 3 |
 
 Les commandes PowerShell s'exécutent dans une console **Windows PowerShell** lancée en tant qu'administrateur. Sauf indication contraire, ouvrez la session avec le compte **AVAEDOS\\Administrator** et le mot de passe **P@ssw0rd**.
@@ -83,7 +83,7 @@ Le commutateur est celui indiqué par le formateur : **Reseau Salle** pour un r�
 
 - **Modèles de machines virtuelles** Windows Server 2025 et Windows 11 Enterprise, généralisés, de génération 2 ;
 - **W11-GOLD** : modèle VDI Windows 11 Enterprise généralisé, destiné à l'atelier 5 ;
-- **Dossier des sources**, copié à l'atelier concerné : FSLogix, pilote ODBC Driver 17 for SQL Server, SQL Server 2022 Express, et, en l'absence d'accès Internet, le module et le paquet du client web RDS.
+- **Dossier des sources**, copié à l'atelier concerné : FSLogix, pilote ODBC Driver 17 for SQL Server, SQL Server 2025 Express, et, en l'absence d'accès Internet, le module et le paquet du client web RDS.
 
 # Préparation de l'environnement
 
@@ -168,62 +168,7 @@ Les machines des ateliers 4 et 5 — **RDS-SQL1**, **RDS-HYPERV1**, **RDS-HYPERV
 
 Les images ISO ne servent qu'à l'atelier 4. Le chemin est repéré dès maintenant pour que les commandes suivantes puissent s'y référer.
 
-Les sections qui suivent reprennent chaque machine une par une : la commande de déploiement y est rappelée pour qui préfère avancer pas à pas, puis vient la configuration réseau et la jonction au domaine, qui reste à faire.
-
-## Création d'une machine virtuelle
-
-Cette section explique le mécanisme. Les commandes de chaque machine sont données au moment où elle est créée, ici puis dans les ateliers suivants : ne déployez rien tout de suite.
-
-### \[MP\]Comprenez le déploiement depuis le modèle
-
-`Deploy-VMTemplate` crée la machine à partir du modèle correspondant au système demandé : un disque différentiel rattaché au modèle, ce qui rend le déploiement quasi instantané et économe en espace disque. Chaque machine se crée ainsi :
-
-```powershell
-Deploy-VMTemplate -Name <nom> -OperatingSystem Windows2025Full
-Wait-VMToStart -VMName <nom>
-Get-VMIntegrationService -VMName <nom> | Where-Object Id -like "*6C09BB55*" | Enable-VMIntegrationService
-```
-
-Les serveurs utilisent le modèle **Windows2025Full**, les postes de travail le modèle **Windows11US**.
-
-Le service d'invité permet de copier des fichiers de la machine physique vers la machine virtuelle avec `Copy-VMFile`, utilisé pour les sources des ateliers. Il est désigné par son identifiant plutôt que par son nom, qui est traduit sur un hôte francophone.
-
-Si le formateur travaille sur un réseau isolé, raccordez les cartes réseau après le déploiement :
-
-```powershell
-Get-VM RDS-* | Get-VMNetworkAdapter | Connect-VMNetworkAdapter -SwitchName "Reseau Salle"
-```
-
-Les modèles étant généralisés, la période d'activation peut être réarmée avec `slmgr /rearm` suivi d'un redémarrage.
-
-### \[Machine\]Configurez TCP/IP, le nom et le domaine
-
-Ouvrez une session avec le compte local **Administrator** et le mot de passe **P@ssw0rd**. Si le formateur le demande, réarmez d'abord la période d'activation avec `slmgr /rearm`, puis redémarrez.
-
-Configurez l'adresse IP selon le plan d'adressage, puis joignez la machine au domaine dans la bonne unité d'organisation. Exemple pour RDS-SESSION1 :
-
-```powershell
-$carte = (Get-NetAdapter | Where-Object Status -eq "Up").Name
-New-NetIPAddress -InterfaceAlias $carte -IPAddress 172.16.1.111 -PrefixLength 16 -DefaultGateway 172.16.1.254
-Set-DnsClientServerAddress -InterfaceAlias $carte -ServerAddresses 172.16.1.1
-$cred = Get-Credential AVAEDOS\Administrator
-Add-Computer -DomainName "avaedos.lan" -NewName RDS-SESSION1 -Credential $cred `
-    -OUPath "OU=RD Servers,DC=avaedos,DC=lan" -Restart
-```
-
-Les serveurs rejoignent l'UO **RD Servers**, les postes du domaine l'UO **RD Clients**.
-
-**Vérification :** `Resolve-DnsName avaedos.lan` renvoie **172.16.1.1** ; après redémarrage, `(Get-CimInstance Win32_ComputerSystem).Domain` renvoie **avaedos.lan**.
-
 ## Ajout du serveur Active Directory
-
-### \[MP\]Créez la machine RDS-DC1
-
-```powershell
-Deploy-VMTemplate -Name "RDS-DC1" -OperatingSystem Windows2025Full
-Wait-VMToStart -VMName "RDS-DC1"
-Get-VMIntegrationService -VMName "RDS-DC1" | Where-Object Id -like "*6C09BB55*" | Enable-VMIntegrationService
-```
 
 ### \[DC\]Configurez TCP/IP et renommez la machine en RDS-DC1
 
@@ -379,65 +324,3 @@ Les machines créées dans les ateliers suivants — RDS-SQL1, RDS-CBROKER2, RDS
 
 **Vérification :** sur un hôte de session, `Get-ChildItem C:\AVAEDOS` liste les dossiers **FSLogix**, **ODBC**, **SQL** et **WebClient**.
 
-## Ajout des serveurs Bureau à distance
-
-### \[MP\]Créez les serveurs RDS de la ferme de sessions
-
-```powershell
-foreach ($nom in "RDS-SESSION1","RDS-SESSION2","RDS-SESSION3","RDS-SESSION4","RDS-CBROKER1","RDS-GATEWAY1") {
-    Deploy-VMTemplate -Name $nom -OperatingSystem Windows2025Full
-    Wait-VMToStart -VMName $nom
-    Get-VMIntegrationService -VMName $nom | Where-Object Id -like "*6C09BB55*" | Enable-VMIntegrationService
-}
-```
-
-Les six serveurs sont déployés d'un coup. Si la mémoire de la machine physique est limitée, déployez d'abord RDS-CBROKER1, RDS-GATEWAY1, RDS-SESSION1 et RDS-SESSION2, puis les deux autres hôtes de session avant l'atelier 1.
-
-### \[Serveurs\]Configurez chaque serveur et joignez-le au domaine
-
-Appliquez la configuration TCP/IP et la jonction à l'UO **RD Servers** avec l'adresse de chaque serveur :
-
-| Serveur | Adresse IP |
-|---|---|
-| RDS-SESSION1 | 172.16.1.111 |
-| RDS-SESSION2 | 172.16.1.112 |
-| RDS-SESSION3 | 172.16.1.113 |
-| RDS-SESSION4 | 172.16.1.114 |
-| RDS-CBROKER1 | 172.16.1.115 |
-| RDS-GATEWAY1 | 172.16.1.117 |
-
-### \[DC\]Ajoutez les serveurs au groupe RDS Servers
-
-```powershell
-Get-ADComputer -SearchBase "OU=RD Servers,DC=avaedos,DC=lan" -Filter { Name -like "RDS-*" } |
-    ForEach-Object { Add-ADGroupMember -Identity "RDS Servers" -Members $_ }
-```
-
-Relancez cette commande chaque fois qu'un serveur RDS rejoint le domaine dans les ateliers suivants.
-
-**Vérification :** `Get-ADGroupMember "RDS Servers" | Select-Object Name` liste les six serveurs.
-
-## Ajout du client
-
-### \[MP\]Créez le poste RDS-CLI1
-
-```powershell
-Deploy-VMTemplate -Name "RDS-CLI1" -OperatingSystem Windows11US
-Wait-VMToStart -VMName "RDS-CLI1"
-Get-VMIntegrationService -VMName "RDS-CLI1" | Where-Object Id -like "*6C09BB55*" | Enable-VMIntegrationService
-```
-
-### \[CLI\]Configurez RDS-CLI1 et ajoutez-le au domaine
-
-Ouvrez une session avec le compte local fourni par le formateur, puis appliquez la configuration avec l'adresse **172.16.1.101** et l'UO **RD Clients** :
-
-```powershell
-$carte = (Get-NetAdapter | Where-Object Status -eq "Up").Name
-New-NetIPAddress -InterfaceAlias $carte -IPAddress 172.16.1.101 -PrefixLength 16 -DefaultGateway 172.16.1.254
-Set-DnsClientServerAddress -InterfaceAlias $carte -ServerAddresses 172.16.1.1
-$cred = Get-Credential AVAEDOS\Administrator
-Add-Computer -DomainName "avaedos.lan" -NewName RDS-CLI1 -Credential $cred `
-    -OUPath "OU=RD Clients,DC=avaedos,DC=lan" -Restart
-```
-
-**Vérification :** sur RDS-DC1, `Get-ADComputer -Filter * | Select-Object Name, DistinguishedName` affiche chaque machine dans son unité d'organisation.

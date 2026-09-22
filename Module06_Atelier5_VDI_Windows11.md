@@ -20,18 +20,56 @@ Répondre au besoin du bureau d'études : des postes virtuels Windows 11 regroup
 Les hôtes de virtualisation exécutent eux-mêmes des machines virtuelles : ils exigent la virtualisation imbriquée, une mémoire statique et l'usurpation d'adresses MAC pour que les postes VDI accèdent au réseau. Ces réglages se font machine arrêtée, avant le premier démarrage.
 
 ```powershell
-foreach ($nom in "RDS-HYPERV1","RDS-HYPERV2") {
-    Deploy-VMTemplate -Name $nom -OperatingSystem Windows2025Full -IsStart $false
-    Set-VMProcessor -VMName $nom -Count 4 -ExposeVirtualizationExtensions $true
-    Set-VMMemory -VMName $nom -DynamicMemoryEnabled $false -StartupBytes 12GB
-    Get-VMNetworkAdapter -VMName $nom | Set-VMNetworkAdapter -MacAddressSpoofing On
-    Start-VM -Name $nom
-    Wait-VMToStart -VMName $nom
-    Get-VMIntegrationService -VMName $nom | Where-Object Id -like "*6C09BB55*" | Enable-VMIntegrationService
-}
+Deploy-VMTemplate -Name RDS-HYPERV1 -OperatingSystem Windows2025Full -IsStart $false
+Set-VMProcessor -VMName RDS-HYPERV1 -Count 4 -ExposeVirtualizationExtensions $true
+Set-VMMemory -VMName RDS-HYPERV1 -DynamicMemoryEnabled $false -StartupBytes 12GB
+Get-VMNetworkAdapter -VMName RDS-HYPERV1 | Set-VMNetworkAdapter -MacAddressSpoofing On
+Start-VM -Name RDS-HYPERV1
+Wait-VMToStart -VMName RDS-HYPERV1
+Get-VMIntegrationService -VMName RDS-HYPERV1 | Where-Object Id -like "*6C09BB55*" | Enable-VMIntegrationService
 ```
 
-Configurez ensuite TCP/IP et la jonction à l'UO **RD Servers** : **172.16.1.121** pour RDS-HYPERV1, **172.16.1.122** pour RDS-HYPERV2. Ajoutez les deux serveurs au groupe **RDS Servers**.
+```powershell
+Deploy-VMTemplate -Name RDS-HYPERV2 -OperatingSystem Windows2025Full -IsStart $false
+Set-VMProcessor -VMName RDS-HYPERV2 -Count 4 -ExposeVirtualizationExtensions $true
+Set-VMMemory -VMName RDS-HYPERV2 -DynamicMemoryEnabled $false -StartupBytes 12GB
+Get-VMNetworkAdapter -VMName RDS-HYPERV2 | Set-VMNetworkAdapter -MacAddressSpoofing On
+Start-VM -Name RDS-HYPERV2
+Wait-VMToStart -VMName RDS-HYPERV2
+Get-VMIntegrationService -VMName RDS-HYPERV2 | Where-Object Id -like "*6C09BB55*" | Enable-VMIntegrationService
+```
+
+Configurez ensuite chaque hôte avant de vous en servir. Ouvrez une session avec le compte local **Administrator** et le mot de passe **P@ssw0rd**.
+
+Sur RDS-HYPERV1 :
+
+```powershell
+$carte = (Get-NetAdapter | Where-Object Status -eq "Up").Name
+New-NetIPAddress -InterfaceAlias $carte -IPAddress 172.16.1.121 -PrefixLength 16 -DefaultGateway 172.16.1.254
+Set-DnsClientServerAddress -InterfaceAlias $carte -ServerAddresses 172.16.1.1
+$mdp = ConvertTo-SecureString "P@ssw0rd" -AsPlainText -Force
+$cred = New-Object System.Management.Automation.PSCredential "AVAEDOS\Administrator", $mdp
+Add-Computer -DomainName "avaedos.lan" -NewName RDS-HYPERV1 -Credential $cred `
+    -OUPath "OU=RD Servers,DC=avaedos,DC=lan" -Restart
+```
+
+Sur RDS-HYPERV2 :
+
+```powershell
+$carte = (Get-NetAdapter | Where-Object Status -eq "Up").Name
+New-NetIPAddress -InterfaceAlias $carte -IPAddress 172.16.1.122 -PrefixLength 16 -DefaultGateway 172.16.1.254
+Set-DnsClientServerAddress -InterfaceAlias $carte -ServerAddresses 172.16.1.1
+$mdp = ConvertTo-SecureString "P@ssw0rd" -AsPlainText -Force
+$cred = New-Object System.Management.Automation.PSCredential "AVAEDOS\Administrator", $mdp
+Add-Computer -DomainName "avaedos.lan" -NewName RDS-HYPERV2 -Credential $cred `
+    -OUPath "OU=RD Servers,DC=avaedos,DC=lan" -Restart
+```
+
+Ajoutez ensuite les deux serveurs au groupe **RDS Servers** depuis RDS-DC1 :
+
+```powershell
+Add-ADGroupMember "RDS Servers" -Members "RDS-HYPERV1$", "RDS-HYPERV2$"
+```
 
 **Vérification :** `Get-VMProcessor -VMName RDS-HYPERV1 | Select-Object ExposeVirtualizationExtensions` renvoie **True**.
 

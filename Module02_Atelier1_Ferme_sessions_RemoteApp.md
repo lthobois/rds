@@ -13,6 +13,107 @@ Déployer la ferme de sessions d'Avaedos, installer le serveur de licences et le
 
 **Livrable :** la collection **RdsSesColl1** (RDS-SESSION1 et RDS-SESSION2) publie le bureau de session ; la collection **RdsAppColl1** (RDS-SESSION3 et RDS-SESSION4) publie deux RemoteApp. Les deux sont accessibles à **lthobois**.
 
+# Configuration des machines de la ferme
+
+Ces six machines ont été déployées avec le script de préparation, mais elles n'ont encore ni nom, ni adresse, ni domaine. Configurez chacune avant de vous en servir : ouvrez une session avec le compte local **Administrator** et le mot de passe **P@ssw0rd**, puis collez le bloc correspondant.
+
+## \[CB1\]Configurez RDS-CBROKER1
+
+```powershell
+$carte = (Get-NetAdapter | Where-Object Status -eq "Up").Name
+New-NetIPAddress -InterfaceAlias $carte -IPAddress 172.16.1.115 -PrefixLength 16 -DefaultGateway 172.16.1.254
+Set-DnsClientServerAddress -InterfaceAlias $carte -ServerAddresses 172.16.1.1
+$mdp = ConvertTo-SecureString "P@ssw0rd" -AsPlainText -Force
+$cred = New-Object System.Management.Automation.PSCredential "AVAEDOS\Administrator", $mdp
+Add-Computer -DomainName "avaedos.lan" -NewName RDS-CBROKER1 -Credential $cred `
+    -OUPath "OU=RD Servers,DC=avaedos,DC=lan" -Restart
+```
+
+## \[SES1\]Configurez RDS-SESSION1
+
+```powershell
+$carte = (Get-NetAdapter | Where-Object Status -eq "Up").Name
+New-NetIPAddress -InterfaceAlias $carte -IPAddress 172.16.1.111 -PrefixLength 16 -DefaultGateway 172.16.1.254
+Set-DnsClientServerAddress -InterfaceAlias $carte -ServerAddresses 172.16.1.1
+$mdp = ConvertTo-SecureString "P@ssw0rd" -AsPlainText -Force
+$cred = New-Object System.Management.Automation.PSCredential "AVAEDOS\Administrator", $mdp
+Add-Computer -DomainName "avaedos.lan" -NewName RDS-SESSION1 -Credential $cred `
+    -OUPath "OU=RD Servers,DC=avaedos,DC=lan" -Restart
+```
+
+## \[SES2\]Configurez RDS-SESSION2
+
+```powershell
+$carte = (Get-NetAdapter | Where-Object Status -eq "Up").Name
+New-NetIPAddress -InterfaceAlias $carte -IPAddress 172.16.1.112 -PrefixLength 16 -DefaultGateway 172.16.1.254
+Set-DnsClientServerAddress -InterfaceAlias $carte -ServerAddresses 172.16.1.1
+$mdp = ConvertTo-SecureString "P@ssw0rd" -AsPlainText -Force
+$cred = New-Object System.Management.Automation.PSCredential "AVAEDOS\Administrator", $mdp
+Add-Computer -DomainName "avaedos.lan" -NewName RDS-SESSION2 -Credential $cred `
+    -OUPath "OU=RD Servers,DC=avaedos,DC=lan" -Restart
+```
+
+## \[SES3\]Configurez RDS-SESSION3
+
+```powershell
+$carte = (Get-NetAdapter | Where-Object Status -eq "Up").Name
+New-NetIPAddress -InterfaceAlias $carte -IPAddress 172.16.1.113 -PrefixLength 16 -DefaultGateway 172.16.1.254
+Set-DnsClientServerAddress -InterfaceAlias $carte -ServerAddresses 172.16.1.1
+$mdp = ConvertTo-SecureString "P@ssw0rd" -AsPlainText -Force
+$cred = New-Object System.Management.Automation.PSCredential "AVAEDOS\Administrator", $mdp
+Add-Computer -DomainName "avaedos.lan" -NewName RDS-SESSION3 -Credential $cred `
+    -OUPath "OU=RD Servers,DC=avaedos,DC=lan" -Restart
+```
+
+## \[SES4\]Configurez RDS-SESSION4
+
+```powershell
+$carte = (Get-NetAdapter | Where-Object Status -eq "Up").Name
+New-NetIPAddress -InterfaceAlias $carte -IPAddress 172.16.1.114 -PrefixLength 16 -DefaultGateway 172.16.1.254
+Set-DnsClientServerAddress -InterfaceAlias $carte -ServerAddresses 172.16.1.1
+$mdp = ConvertTo-SecureString "P@ssw0rd" -AsPlainText -Force
+$cred = New-Object System.Management.Automation.PSCredential "AVAEDOS\Administrator", $mdp
+Add-Computer -DomainName "avaedos.lan" -NewName RDS-SESSION4 -Credential $cred `
+    -OUPath "OU=RD Servers,DC=avaedos,DC=lan" -Restart
+```
+
+## \[GTW1\]Configurez RDS-GATEWAY1
+
+```powershell
+$carte = (Get-NetAdapter | Where-Object Status -eq "Up").Name
+New-NetIPAddress -InterfaceAlias $carte -IPAddress 172.16.1.117 -PrefixLength 16 -DefaultGateway 172.16.1.254
+Set-DnsClientServerAddress -InterfaceAlias $carte -ServerAddresses 172.16.1.1
+$mdp = ConvertTo-SecureString "P@ssw0rd" -AsPlainText -Force
+$cred = New-Object System.Management.Automation.PSCredential "AVAEDOS\Administrator", $mdp
+Add-Computer -DomainName "avaedos.lan" -NewName RDS-GATEWAY1 -Credential $cred `
+    -OUPath "OU=RD Servers,DC=avaedos,DC=lan" -Restart
+```
+
+## \[CLI\]Configurez RDS-CLI1
+
+Ouvrez une session avec le compte local fourni par le formateur, puis collez :
+
+```powershell
+$carte = (Get-NetAdapter | Where-Object Status -eq "Up").Name
+New-NetIPAddress -InterfaceAlias $carte -IPAddress 172.16.1.101 -PrefixLength 16 -DefaultGateway 172.16.1.254
+Set-DnsClientServerAddress -InterfaceAlias $carte -ServerAddresses 172.16.1.1
+$mdp = ConvertTo-SecureString "P@ssw0rd" -AsPlainText -Force
+$cred = New-Object System.Management.Automation.PSCredential "AVAEDOS\Administrator", $mdp
+Add-Computer -DomainName "avaedos.lan" -NewName RDS-CLI1 -Credential $cred `
+    -OUPath "OU=RD Clients,DC=avaedos,DC=lan" -Restart
+```
+
+Le poste rejoint l'UO **RD Clients** : c'est elle qui portera la stratégie **GPO RD Clients SSO** de l'atelier 3.
+
+## \[DC\]Ajoutez les serveurs au groupe RDS Servers
+
+```powershell
+Add-ADGroupMember "RDS Servers" -Members "RDS-SESSION1$", "RDS-SESSION2$", "RDS-SESSION3$", `
+    "RDS-SESSION4$", "RDS-CBROKER1$", "RDS-GATEWAY1$"
+```
+
+**Vérification :** `Get-ADGroupMember "RDS Servers" | Select-Object Name` liste les six serveurs, et `Get-ADComputer RDS-CLI1` le place dans l'UO **RD Clients**.
+
 # Installation du service Bureau à distance
 
 ## \[CB1\]Déployez les services de rôle
