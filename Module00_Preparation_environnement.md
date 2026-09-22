@@ -302,25 +302,3 @@ New-SmbShare -Name "ProfilDisk" -Path C:\ProfilDisk `
 ```
 
 Les autorisations NTFS du dossier sont réglées à l'atelier 2.
-
-### \[MP\]Mettez les sources à disposition dans C:\\AVAEDOS
-
-Le réseau de la salle est isolé : les installateurs ne peuvent pas être téléchargés depuis les machines virtuelles. Le formateur fournit un dossier de sources — FSLogix, pilote ODBC, SQL Server Express, client web — qui est déposé dans **C:\\AVAEDOS** sur chaque machine qui en a besoin.
-
-```powershell
-$racine = "<chemin du dossier de sources fourni par le formateur>"
-$machines = "RDS-SESSION1","RDS-SESSION2","RDS-SESSION3","RDS-SESSION4",
-            "RDS-CBROKER1","RDS-GATEWAY1"
-foreach ($vm in $machines) {
-    Get-VMIntegrationService -VMName $vm | Where-Object Id -like "*6C09BB55*" | Enable-VMIntegrationService
-    Get-ChildItem $racine -Recurse -File | Where-Object FullName -notlike "*\W11-GOLD\*" | ForEach-Object {
-        Copy-VMFile -Name $vm -SourcePath $_.FullName -FileSource Host -CreateFullPath -Force `
-            -DestinationPath ("C:\AVAEDOS" + $_.FullName.Substring($racine.Length))
-    }
-}
-```
-
-Les machines créées dans les ateliers suivants — RDS-SQL1, RDS-CBROKER2, RDS-GATEWAY2, RDS-HYPERV1 et RDS-HYPERV2 — reçoivent le dossier de la même façon au moment de leur création. Le modèle VDI **W11-GOLD** est copié à l'atelier 5, directement sur l'hôte de virtualisation.
-
-**Vérification :** sur un hôte de session, `Get-ChildItem C:\AVAEDOS` liste les dossiers **FSLogix**, **ODBC**, **SQL** et **WebClient**.
-
