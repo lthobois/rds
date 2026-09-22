@@ -47,6 +47,7 @@ Sur RDS-HYPERV1 :
 $carte = (Get-NetAdapter | Where-Object Status -eq "Up").Name
 New-NetIPAddress -InterfaceAlias $carte -IPAddress 172.16.1.121 -PrefixLength 16 -DefaultGateway 172.16.1.254
 Set-DnsClientServerAddress -InterfaceAlias $carte -ServerAddresses 172.16.1.1
+Start-Sleep -Seconds 5
 $mdp = ConvertTo-SecureString "P@ssw0rd" -AsPlainText -Force
 $cred = New-Object System.Management.Automation.PSCredential "AVAEDOS\Administrator", $mdp
 Add-Computer -DomainName "avaedos.lan" -NewName RDS-HYPERV1 -Credential $cred `
@@ -59,6 +60,7 @@ Sur RDS-HYPERV2 :
 $carte = (Get-NetAdapter | Where-Object Status -eq "Up").Name
 New-NetIPAddress -InterfaceAlias $carte -IPAddress 172.16.1.122 -PrefixLength 16 -DefaultGateway 172.16.1.254
 Set-DnsClientServerAddress -InterfaceAlias $carte -ServerAddresses 172.16.1.1
+Start-Sleep -Seconds 5
 $mdp = ConvertTo-SecureString "P@ssw0rd" -AsPlainText -Force
 $cred = New-Object System.Management.Automation.PSCredential "AVAEDOS\Administrator", $mdp
 Add-Computer -DomainName "avaedos.lan" -NewName RDS-HYPERV2 -Credential $cred `
@@ -106,21 +108,21 @@ La connexion réseau de l'hôte est brièvement interrompue pendant la création
 
 Le modèle est une machine virtuelle Windows 11 Enterprise de génération 2, avec démarrage sécurisé et TPM virtuel, généralisée par `sysprep /generalize /oobe /shutdown /mode:vm`. Il est fourni pour éviter une préparation longue.
 
-Sur la machine physique, copiez le dossier du modèle dans **C:\\AVAEDOS\\W11-GOLD** de RDS-HYPERV1 :
+Le modèle est trop volumineux pour être embarqué dans les machines : le formateur le fournit sur la machine physique. Copiez-le dans **C:\\AVAEDOS\\_RDS\\W11-GOLD** de RDS-HYPERV1 :
 
 ```powershell
-$racine = "<chemin du dossier de sources>\W11-GOLD"
+$racine = "<chemin du modèle W11-GOLD fourni par le formateur>"
 Get-VMIntegrationService -VMName RDS-HYPERV1 | Where-Object Id -like "*6C09BB55*" | Enable-VMIntegrationService
 Get-ChildItem $racine -Recurse -File | ForEach-Object {
     Copy-VMFile -Name RDS-HYPERV1 -SourcePath $_.FullName -FileSource Host -CreateFullPath -Force `
-        -DestinationPath ("C:\AVAEDOS\W11-GOLD" + $_.FullName.Substring($racine.Length))
+        -DestinationPath ("C:\AVAEDOS\_RDS\W11-GOLD" + $_.FullName.Substring($racine.Length))
 }
 ```
 
 Puis sur RDS-HYPERV1 :
 
 ```powershell
-$source = (Get-ChildItem "C:\AVAEDOS\W11-GOLD\Virtual Machines\*.vmcx").FullName
+$source = (Get-ChildItem "C:\AVAEDOS\_RDS\W11-GOLD\Virtual Machines\*.vmcx").FullName
 Import-VM -Path $source -Register
 Get-VMNetworkAdapter -VMName W11-GOLD | Connect-VMNetworkAdapter -SwitchName "VDI"
 ```

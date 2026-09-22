@@ -15,17 +15,7 @@ Supprimer les points de défaillance uniques : Connection Broker en haute dispon
 
 # Ajout des nouveaux serveurs
 
-## \[MP\]Créez RDS-SQL1
-
-RDS-CBROKER2 et RDS-GATEWAY2 existent déjà : le script de préparation les a déployés. Seule RDS-SQL1 reste à créer.
-
-```powershell
-Deploy-VMTemplate -Name RDS-SQL1 -OperatingSystem Windows2025Full
-Wait-VMToStart -VMName RDS-SQL1
-Get-VMIntegrationService -VMName RDS-SQL1 | Where-Object Id -like "*6C09BB55*" | Enable-VMIntegrationService
-```
-
-Configurez chaque machine avant de vous en servir. Ouvrez une session avec le compte local **Administrator** et le mot de passe **P@ssw0rd**.
+RDS-CBROKER2 et RDS-GATEWAY2 existent déjà : le script de préparation les a déployés. Aucune machine n'est à créer dans cet atelier. Configurez-les avant de vous en servir : ouvrez une session avec le compte local **Administrator** et le mot de passe **P@ssw0rd**.
 
 ## \[CB2\]Configurez RDS-CBROKER2
 
@@ -33,6 +23,7 @@ Configurez chaque machine avant de vous en servir. Ouvrez une session avec le co
 $carte = (Get-NetAdapter | Where-Object Status -eq "Up").Name
 New-NetIPAddress -InterfaceAlias $carte -IPAddress 172.16.1.116 -PrefixLength 16 -DefaultGateway 172.16.1.254
 Set-DnsClientServerAddress -InterfaceAlias $carte -ServerAddresses 172.16.1.1
+Start-Sleep -Seconds 5
 $mdp = ConvertTo-SecureString "P@ssw0rd" -AsPlainText -Force
 $cred = New-Object System.Management.Automation.PSCredential "AVAEDOS\Administrator", $mdp
 Add-Computer -DomainName "avaedos.lan" -NewName RDS-CBROKER2 -Credential $cred `
@@ -45,30 +36,19 @@ Add-Computer -DomainName "avaedos.lan" -NewName RDS-CBROKER2 -Credential $cred `
 $carte = (Get-NetAdapter | Where-Object Status -eq "Up").Name
 New-NetIPAddress -InterfaceAlias $carte -IPAddress 172.16.1.118 -PrefixLength 16 -DefaultGateway 172.16.1.254
 Set-DnsClientServerAddress -InterfaceAlias $carte -ServerAddresses 172.16.1.1
+Start-Sleep -Seconds 5
 $mdp = ConvertTo-SecureString "P@ssw0rd" -AsPlainText -Force
 $cred = New-Object System.Management.Automation.PSCredential "AVAEDOS\Administrator", $mdp
 Add-Computer -DomainName "avaedos.lan" -NewName RDS-GATEWAY2 -Credential $cred `
     -OUPath "OU=RD Servers,DC=avaedos,DC=lan" -Restart
 ```
 
-## \[SQL\]Configurez RDS-SQL1
-
-```powershell
-$carte = (Get-NetAdapter | Where-Object Status -eq "Up").Name
-New-NetIPAddress -InterfaceAlias $carte -IPAddress 172.16.1.120 -PrefixLength 16 -DefaultGateway 172.16.1.254
-Set-DnsClientServerAddress -InterfaceAlias $carte -ServerAddresses 172.16.1.1
-$mdp = ConvertTo-SecureString "P@ssw0rd" -AsPlainText -Force
-$cred = New-Object System.Management.Automation.PSCredential "AVAEDOS\Administrator", $mdp
-Add-Computer -DomainName "avaedos.lan" -NewName RDS-SQL1 -Credential $cred `
-    -OUPath "OU=RD Servers,DC=avaedos,DC=lan" -Restart
-```
-
-**Vérification :** `(Get-CimInstance Win32_ComputerSystem).Domain` renvoie **avaedos.lan** sur les trois serveurs.
+**Vérification :** `(Get-CimInstance Win32_ComputerSystem).Domain` renvoie **avaedos.lan** sur les deux serveurs.
 
 ## \[DC\]Ajoutez les nouveaux serveurs au groupe RDS Servers
 
 ```powershell
-Add-ADGroupMember "RDS Servers" -Members "RDS-CBROKER2$", "RDS-GATEWAY2$", "RDS-SQL1$"
+Add-ADGroupMember "RDS Servers" -Members "RDS-CBROKER2$", "RDS-GATEWAY2$"
 Add-DnsServerResourceRecordA -ZoneName "avaedos.lan" -Name "rds-farm" -IPv4Address 172.16.1.115
 Add-DnsServerResourceRecordA -ZoneName "avaedos.lan" -Name "rds-farm" -IPv4Address 172.16.1.116
 ```
@@ -77,20 +57,22 @@ Les deux enregistrements **rds-farm** forment le tourniquet DNS qui répartit le
 
 # Haute disponibilité du Connection Broker
 
-## \[SQL\]Installez SQL Server 2025 Express
+## \[DC\]Installez SQL Server 2025 Express
 
-SQL Server Express suffit pour le laboratoire. En production, la base est placée sur un SQL Server redondant ou sur Azure SQL Database. Le formateur fournit l'installateur dans **C:\\AVAEDOS\\SQL**.
+SQL Server Express suffit pour le laboratoire, où il est hébergé sur RDS-DC1 pour économiser une machine. **En production, on ne fait pas cela** : Microsoft déconseille explicitement d'installer SQL Server sur un contrôleur de domaine, et la base du Connection Broker est placée sur un SQL Server redondant ou sur Azure SQL Database.
+
+Sur un contrôleur de domaine, les services SQL ne peuvent pas tourner sous un compte de service local : le paramètre `/SQLSVCACCOUNT` désigne donc un compte de domaine.
 
 ```powershell
-Start-Process C:\AVAEDOS\SQL\SQLEXPR_x64_ENU.exe -Wait -ArgumentList `
-    '/Q /ACTION=Install /FEATURES=SQLEngine /INSTANCENAME=MSSQLSERVER /SQLSYSADMINACCOUNTS="AVAEDOS\Domain Admins" /TCPENABLED=1 /UPDATEENABLED=0 /IACCEPTSQLSERVERLICENSETERMS'
+Start-Process C:\AVAEDOS\_RDS\SQL\SQLEXPR_x64_ENU.exe -Wait -ArgumentList `
+    '/Q /ACTION=Install /FEATURES=SQLEngine /INSTANCENAME=MSSQLSERVER /SQLSYSADMINACCOUNTS="AVAEDOS\Domain Admins" /SQLSVCACCOUNT="AVAEDOS\Administrator" /SQLSVCPASSWORD="P@ssw0rd" /TCPENABLED=1 /UPDATEENABLED=0 /IACCEPTSQLSERVERLICENSETERMS'
 New-NetFirewallRule -DisplayName "SQL Server" -Direction Inbound `
     -Protocol TCP -LocalPort 1433 -Action Allow
 ```
 
-**Vérification :** `Get-Service MSSQLSERVER` est à l'état **Running** ; depuis RDS-CBROKER1, `Test-NetConnection rds-sql1 -Port 1433` réussit.
+**Vérification :** `Get-Service MSSQLSERVER` est à l'état **Running** ; depuis RDS-CBROKER1, `Test-NetConnection rds-dc1 -Port 1433` réussit.
 
-## \[SQL\]Autorisez le groupe RDS Servers à créer la base
+## \[DC\]Autorisez le groupe RDS Servers à créer la base
 
 Les Connection Brokers accèdent à la base avec leur compte ordinateur, membre du groupe **RDS Servers**.
 
@@ -114,10 +96,10 @@ Chaque Connection Broker se connecte à SQL Server par le pilote ODBC désigné 
 Le pilote exige le **Redistribuable Visual C++**, absent d'une installation neuve de Windows Server 2025 : sans lui, l'installation s'arrête sur l'erreur **1723** puis **1603**.
 
 ```powershell
-Start-Process C:\AVAEDOS\ODBC\vc_redist.x64.exe -Wait `
+Start-Process C:\AVAEDOS\_RDS\ODBC\vc_redist.x64.exe -Wait `
     -ArgumentList "/install", "/quiet", "/norestart"
 Start-Process msiexec.exe -Wait -ArgumentList `
-    "/i C:\AVAEDOS\ODBC\msodbcsql17.msi /qn IACCEPTMSODBCSQLLICENSETERMS=YES ALLUSERS=1"
+    "/i C:\AVAEDOS\_RDS\ODBC\msodbcsql17.msi /qn IACCEPTMSODBCSQLLICENSETERMS=YES ALLUSERS=1"
 Restart-Computer
 ```
 
@@ -134,11 +116,11 @@ Get-RDServer -ConnectionBroker rds-cbroker1.avaedos.lan
 
 ```powershell
 Set-RDConnectionBrokerHighAvailability -ConnectionBroker rds-cbroker1.avaedos.lan `
-    -DatabaseConnectionString "DRIVER=ODBC Driver 17 for SQL Server;SERVER=rds-sql1.avaedos.lan;Trusted_Connection=Yes;APP=Remote Desktop Services Connection Broker;DATABASE=RDCB-DB" `
+    -DatabaseConnectionString "DRIVER=ODBC Driver 17 for SQL Server;SERVER=rds-dc1.avaedos.lan;Trusted_Connection=Yes;APP=Remote Desktop Services Connection Broker;DATABASE=RDCB-DB" `
     -ClientAccessName rds-farm.avaedos.lan
 ```
 
-**Résultat attendu :** la base **RDCB-DB** est créée sur RDS-SQL1.
+**Résultat attendu :** la base **RDCB-DB** est créée sur RDS-DC1.
 
 **Vérification :**
 
@@ -150,7 +132,7 @@ La commande affiche **rds-farm.avaedos.lan** comme nom d'accès client.
 
 **Un point à retenir :** **rds-farm.avaedos.lan** est un tourniquet DNS, sans compte ni SPN Kerberos. Il sert aux **connexions des utilisateurs**, jamais au paramètre `-ConnectionBroker` des commandes d'administration : celles-ci échouent alors sur *The RD Connection Broker server is not available*. L'administration continue de désigner un serveur par son nom réel, ici **rds-cbroker1.avaedos.lan**.
 
-## \[SQL\]Donnez au groupe RDS Servers l'accès à la base RDCB-DB
+## \[DC\]Donnez au groupe RDS Servers l'accès à la base RDCB-DB
 
 La base appartient au Connection Broker qui l'a créée. Sans droit à l'intérieur de la base, le second se voit refuser l'accès : **The database is not reachable from the specified RD Connection Broker server**.
 
@@ -289,7 +271,7 @@ Depuis RDS-EXT1, reconnectez-vous au client web puis au bureau.
 Start-VM -Name RDS-GATEWAY1
 ```
 
-**Interprétation :** les deux Connection Brokers partagent la même base : la haute disponibilité dépend désormais de RDS-SQL1, qui devient à son tour un point de défaillance à protéger en production.
+**Interprétation :** les deux Connection Brokers partagent la même base : la haute disponibilité dépend désormais de RDS-DC1, qui devient à son tour un point de défaillance à protéger en production.
 
 # Maintenance d'un hôte de session
 
@@ -371,7 +353,7 @@ La haute disponibilité du Connection Broker déplace le risque vers SQL Server 
 | **has to be same OS version** alors que les deux serveurs sont identiques | Lecture WMI bloquée par le pare-feu du serveur à ajouter | Activer le groupe de règles **Windows Management Instrumentation (WMI)** |
 | **The database is not reachable** sur le second Connection Broker | Le groupe **RDS Servers** n'a pas de droit dans la base RDCB-DB | L'ajouter au rôle **db_owner** de la base |
 | **deployment servers were not reachable** | Un serveur du déploiement est éteint | Allumer tous les serveurs avant d'ajouter un Connection Broker |
-| Échec de connexion à RDS-SQL1 | Groupe non pris en compte ou port fermé | Redémarrer les Connection Brokers, vérifier la règle de pare-feu 1433 |
+| Échec de connexion à RDS-DC1 | Groupe non pris en compte ou port fermé | Redémarrer les Connection Brokers, vérifier la règle de pare-feu 1433 |
 | Erreur de certificat après l'ajout d'un serveur | Certificat non redéployé | Relancer `Set-RDCertificate` pour les quatre rôles |
 | Refus sur une seule des deux passerelles | CAP et RAP non reproduites sur RDS-GATEWAY2 | Aligner les stratégies ou utiliser un NPS central |
 | Nouvelles sessions toujours sur l'hôte drainé | Reconnexion à une session existante | Normal : seules les nouvelles sessions sont refusées |

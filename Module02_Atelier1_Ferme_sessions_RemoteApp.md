@@ -23,6 +23,7 @@ Ces six machines ont été déployées avec le script de préparation, mais elle
 $carte = (Get-NetAdapter | Where-Object Status -eq "Up").Name
 New-NetIPAddress -InterfaceAlias $carte -IPAddress 172.16.1.115 -PrefixLength 16 -DefaultGateway 172.16.1.254
 Set-DnsClientServerAddress -InterfaceAlias $carte -ServerAddresses 172.16.1.1
+Start-Sleep -Seconds 5
 $mdp = ConvertTo-SecureString "P@ssw0rd" -AsPlainText -Force
 $cred = New-Object System.Management.Automation.PSCredential "AVAEDOS\Administrator", $mdp
 Add-Computer -DomainName "avaedos.lan" -NewName RDS-CBROKER1 -Credential $cred `
@@ -35,6 +36,7 @@ Add-Computer -DomainName "avaedos.lan" -NewName RDS-CBROKER1 -Credential $cred `
 $carte = (Get-NetAdapter | Where-Object Status -eq "Up").Name
 New-NetIPAddress -InterfaceAlias $carte -IPAddress 172.16.1.111 -PrefixLength 16 -DefaultGateway 172.16.1.254
 Set-DnsClientServerAddress -InterfaceAlias $carte -ServerAddresses 172.16.1.1
+Start-Sleep -Seconds 5
 $mdp = ConvertTo-SecureString "P@ssw0rd" -AsPlainText -Force
 $cred = New-Object System.Management.Automation.PSCredential "AVAEDOS\Administrator", $mdp
 Add-Computer -DomainName "avaedos.lan" -NewName RDS-SESSION1 -Credential $cred `
@@ -47,6 +49,7 @@ Add-Computer -DomainName "avaedos.lan" -NewName RDS-SESSION1 -Credential $cred `
 $carte = (Get-NetAdapter | Where-Object Status -eq "Up").Name
 New-NetIPAddress -InterfaceAlias $carte -IPAddress 172.16.1.112 -PrefixLength 16 -DefaultGateway 172.16.1.254
 Set-DnsClientServerAddress -InterfaceAlias $carte -ServerAddresses 172.16.1.1
+Start-Sleep -Seconds 5
 $mdp = ConvertTo-SecureString "P@ssw0rd" -AsPlainText -Force
 $cred = New-Object System.Management.Automation.PSCredential "AVAEDOS\Administrator", $mdp
 Add-Computer -DomainName "avaedos.lan" -NewName RDS-SESSION2 -Credential $cred `
@@ -59,6 +62,7 @@ Add-Computer -DomainName "avaedos.lan" -NewName RDS-SESSION2 -Credential $cred `
 $carte = (Get-NetAdapter | Where-Object Status -eq "Up").Name
 New-NetIPAddress -InterfaceAlias $carte -IPAddress 172.16.1.113 -PrefixLength 16 -DefaultGateway 172.16.1.254
 Set-DnsClientServerAddress -InterfaceAlias $carte -ServerAddresses 172.16.1.1
+Start-Sleep -Seconds 5
 $mdp = ConvertTo-SecureString "P@ssw0rd" -AsPlainText -Force
 $cred = New-Object System.Management.Automation.PSCredential "AVAEDOS\Administrator", $mdp
 Add-Computer -DomainName "avaedos.lan" -NewName RDS-SESSION3 -Credential $cred `
@@ -71,6 +75,7 @@ Add-Computer -DomainName "avaedos.lan" -NewName RDS-SESSION3 -Credential $cred `
 $carte = (Get-NetAdapter | Where-Object Status -eq "Up").Name
 New-NetIPAddress -InterfaceAlias $carte -IPAddress 172.16.1.114 -PrefixLength 16 -DefaultGateway 172.16.1.254
 Set-DnsClientServerAddress -InterfaceAlias $carte -ServerAddresses 172.16.1.1
+Start-Sleep -Seconds 5
 $mdp = ConvertTo-SecureString "P@ssw0rd" -AsPlainText -Force
 $cred = New-Object System.Management.Automation.PSCredential "AVAEDOS\Administrator", $mdp
 Add-Computer -DomainName "avaedos.lan" -NewName RDS-SESSION4 -Credential $cred `
@@ -83,6 +88,7 @@ Add-Computer -DomainName "avaedos.lan" -NewName RDS-SESSION4 -Credential $cred `
 $carte = (Get-NetAdapter | Where-Object Status -eq "Up").Name
 New-NetIPAddress -InterfaceAlias $carte -IPAddress 172.16.1.117 -PrefixLength 16 -DefaultGateway 172.16.1.254
 Set-DnsClientServerAddress -InterfaceAlias $carte -ServerAddresses 172.16.1.1
+Start-Sleep -Seconds 5
 $mdp = ConvertTo-SecureString "P@ssw0rd" -AsPlainText -Force
 $cred = New-Object System.Management.Automation.PSCredential "AVAEDOS\Administrator", $mdp
 Add-Computer -DomainName "avaedos.lan" -NewName RDS-GATEWAY1 -Credential $cred `
@@ -97,6 +103,7 @@ Ouvrez une session avec le compte local fourni par le formateur, puis collez :
 $carte = (Get-NetAdapter | Where-Object Status -eq "Up").Name
 New-NetIPAddress -InterfaceAlias $carte -IPAddress 172.16.1.101 -PrefixLength 16 -DefaultGateway 172.16.1.254
 Set-DnsClientServerAddress -InterfaceAlias $carte -ServerAddresses 172.16.1.1
+Start-Sleep -Seconds 5
 $mdp = ConvertTo-SecureString "P@ssw0rd" -AsPlainText -Force
 $cred = New-Object System.Management.Automation.PSCredential "AVAEDOS\Administrator", $mdp
 Add-Computer -DomainName "avaedos.lan" -NewName RDS-CLI1 -Credential $cred `

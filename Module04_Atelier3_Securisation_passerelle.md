@@ -99,14 +99,14 @@ Get-NetUDPEndpoint -LocalPort 3391
 
 Le client web exige une passerelle dans le déploiement, un mode de licence par utilisateur et le certificat du Connection Broker.
 
-Le réseau de la salle étant isolé, le module PowerShell et le paquet du client sont fournis dans **C:\\AVAEDOS\\WebClient** : c'est la procédure hors ligne de Microsoft.
+Le réseau de la salle étant isolé, le module PowerShell et le paquet du client sont déjà présents dans **C:\\AVAEDOS\\_RDS\\WebClient** : c'est la procédure hors ligne de Microsoft.
 
 ```powershell
 New-Item -ItemType Directory -Path C:\Certificats -Force
 Copy-Item \\rds-cbroker1\C$\Certificats\rds-avaedos.cer C:\Certificats\ -Force
-$env:PSModulePath += ";C:\AVAEDOS\WebClient"
+$env:PSModulePath += ";C:\AVAEDOS\_RDS\WebClient"
 Import-Module RDWebClientManagement
-$paquet = (Get-ChildItem C:\AVAEDOS\WebClient\rdwebclient-*.zip | Select-Object -Last 1).FullName
+$paquet = (Get-ChildItem C:\AVAEDOS\_RDS\WebClient\rdwebclient-*.zip | Select-Object -Last 1).FullName
 Install-RDWebClientPackage -Source $paquet
 Import-RDWebClientBrokerCert C:\Certificats\rds-avaedos.cer
 Publish-RDWebClientPackage -Type Production -Latest
@@ -146,6 +146,7 @@ Ouvrez une session avec le compte local fourni par le formateur, puis :
 $carte = (Get-NetAdapter | Where-Object Status -eq "Up").Name
 New-NetIPAddress -InterfaceAlias $carte -IPAddress 172.16.1.102 -PrefixLength 16 -DefaultGateway 172.16.1.254
 Set-DnsClientServerAddress -InterfaceAlias $carte -ServerAddresses 172.16.1.1
+Start-Sleep -Seconds 5
 Rename-Computer -NewName RDS-EXT1 -Restart
 ```
 

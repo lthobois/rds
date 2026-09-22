@@ -33,12 +33,12 @@ Le partage **ProfilDisk** a été créé lors de la préparation.
 
 ## \[CB1\]Installez l'agent FSLogix sur les hôtes de session
 
-L'agent doit être installé sur tous les hôtes des deux collections. L'installateur est déjà présent sur chaque machine dans **C:\\AVAEDOS**, fourni par le formateur : il est lancé localement sur chaque hôte, sans lecture de partage réseau depuis une session distante.
+L'agent doit être installé sur tous les hôtes des deux collections. L'installateur est déjà présent sur chaque machine dans **C:\\AVAEDOS\\_RDS\\FSLogix** : il est lancé localement, sans lecture de partage réseau depuis une session distante.
 
 ```powershell
 $hotes = "rds-session1","rds-session2","rds-session3","rds-session4"
 Invoke-Command -ComputerName $hotes -ScriptBlock {
-    Start-Process C:\AVAEDOS\FSLogix\FSLogixAppsSetup.exe `
+    Start-Process C:\AVAEDOS\_RDS\FSLogix\FSLogixAppsSetup.exe `
         -ArgumentList "/install /quiet /norestart" -Wait
     "$env:COMPUTERNAME : " + (Get-Service frxsvc -ErrorAction SilentlyContinue).Status
 }

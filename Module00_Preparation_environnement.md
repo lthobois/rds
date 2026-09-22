@@ -178,6 +178,7 @@ RDS-DC1 est le premier serveur : il n'y a pas encore de domaine à joindre.
 $carte = (Get-NetAdapter | Where-Object Status -eq "Up").Name
 New-NetIPAddress -InterfaceAlias $carte -IPAddress 172.16.1.1 -PrefixLength 16 -DefaultGateway 172.16.1.254
 Set-DnsClientServerAddress -InterfaceAlias $carte -ServerAddresses 172.16.1.1
+Start-Sleep -Seconds 5
 Rename-Computer -NewName RDS-DC1 -Restart
 ```
 
