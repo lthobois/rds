@@ -15,7 +15,7 @@ Rendre l'expérience utilisateur identique quel que soit l'hôte : profils FSLog
 
 # Préparation du stockage des profils
 
-## \[DC\]Réglez les autorisations du dossier ProfilDisk
+## 1. \[DC\]Réglez les autorisations du dossier ProfilDisk
 
 Chaque utilisateur doit pouvoir créer son propre dossier, sans voir celui des autres. Les autorisations suivent la recommandation FSLogix : droit de modification limité au dossier racine pour les utilisateurs, contrôle total du créateur sur son sous-dossier.
 
@@ -31,7 +31,7 @@ Le partage **ProfilDisk** a été créé lors de la préparation.
 
 # Déploiement de FSLogix
 
-## \[CB1\]Installez l'agent FSLogix sur les hôtes de session
+## 2. \[CB1\]Installez l'agent FSLogix sur les hôtes de session
 
 L'agent doit être installé sur tous les hôtes des deux collections. L'installateur est déjà présent sur chaque machine dans **C:\\AVAEDOS\\_RDS\\FSLogix** : il est lancé localement, sans lecture de partage réseau depuis une session distante.
 
@@ -46,7 +46,7 @@ Invoke-Command -ComputerName $hotes -ScriptBlock {
 
 **Résultat attendu :** le service **frxsvc** est **Running** sur les quatre hôtes.
 
-## \[CB1\]Configurez les conteneurs de profil
+## 3. \[CB1\]Configurez les conteneurs de profil
 
 ```powershell
 Invoke-Command -ComputerName $hotes -ScriptBlock {
@@ -65,35 +65,9 @@ Invoke-Command -ComputerName $hotes -ScriptBlock {
 
 En production, ces paramètres se gèrent par stratégie de groupe avec les modèles d'administration FSLogix.
 
-## \[CLI\]Ajoutez le flux des ressources sur le poste
+## 4. \[CLI\]Ouvrez une session et vérifiez le conteneur
 
-Le flux d'abonnement intègre les ressources publiées au menu **Démarrer**, sans passer par le navigateur. C'est par lui que vous ouvrirez le bureau pour la suite de l'atelier.
-
-Ouvrez une session Windows sur RDS-CLI1 avec **AVAEDOS\\lthobois**, puis **Panneau de configuration** \\ **Connexions RemoteApp et Bureau à distance** \\ **Accéder aux RemoteApp et aux bureaux**.
-
-Saisissez l'adresse du flux :
-
-```
-https://rds.avaedos.lan/RDWeb/Feed/webfeed.aspx
-```
-
-Suivez l'assistant avec le compte **AVAEDOS\\lthobois** et le mot de passe **P@ssw0rd**.
-
-**Résultat attendu :** l'assistant annonce les ressources trouvées, et un dossier **Work Resources (RADC)** apparaît dans le menu **Démarrer** avec le bureau **RdsSesColl1** et les deux RemoteApp.
-
-**Vérification :**
-
-```powershell
-Get-ChildItem "$env:APPDATA\Microsoft\Windows\Start Menu\Programs\Work Resources (RADC)"
-```
-
-Les raccourcis des ressources publiées y figurent.
-
-**Si l'assistant refuse l'adresse :** le poste doit approuver l'autorité **RDS-CA**. Lancez `gpupdate /force`, fermez puis rouvrez la session Windows, et vérifiez que `https://rds.avaedos.lan/RDWeb/` s'ouvre sans avertissement de certificat.
-
-## \[CLI\]Ouvrez une session et vérifiez le conteneur
-
-Depuis le dossier **Work Resources (RADC)** du menu **Démarrer**, ouvrez le bureau **RdsSesColl1**.
+Depuis le dossier **Work Resources (RADC)** du menu **Démarrer** (abonné à l'atelier 1), ouvrez le bureau **RdsSesColl1**.
 
 C'est bien l'ouverture de session sur l'hôte qui déclenche FSLogix : le conteneur est monté par le service au moment où Windows charge le profil, pas avant.
 
@@ -101,7 +75,7 @@ Dans la session, modifiez un paramètre visible : l'arrière-plan du bureau par 
 
 **Vérification :** sur RDS-DC1, `Get-ChildItem C:\ProfilDisk -Recurse` affiche un dossier **lthobois_S-1-5-...** contenant **Profile_lthobois.VHDX**.
 
-## \[CB1\]Forcez l'ouverture sur l'autre hôte
+## 5. \[CB1\]Forcez l'ouverture sur l'autre hôte
 
 Notez l'hôte utilisé par la session précédente (`Get-RDUserSession` pendant la session). Mettez-le en drainage pour obliger le Connection Broker à choisir l'autre hôte. Exemple si la session était sur RDS-SESSION1 :
 
@@ -126,7 +100,7 @@ Set-RDSessionHost -SessionHost rds-session1.avaedos.lan -NewConnectionAllowed Ye
 
 # Configuration des sessions par stratégie de groupe
 
-## \[DC\]Créez la stratégie GPO RD Sessions liée à l'UO RD Servers
+## 6. \[DC\]Créez la stratégie GPO RD Sessions liée à l'UO RD Servers
 
 ```powershell
 $gpo = New-GPO -Name "GPO RD Sessions"
@@ -148,13 +122,13 @@ foreach ($nom in $parametres.Keys) {
 
 Les délais s'expriment en millisecondes. Chaque valeur correspond à un paramètre de **Configuration ordinateur** \\ **Modèles d'administration** \\ **Composants Windows** \\ **Services Bureau à distance** \\ **Hôte de session Bureau à distance**. La stratégie s'applique aussi aux autres serveurs de l'UO, qui ne portent pas de sessions utilisateur : sans effet sur eux.
 
-## \[DC\]Examinez la stratégie dans la console
+## 7. \[DC\]Examinez la stratégie dans la console
 
 Ouvrez **Group Policy Management**, puis modifiez **GPO RD Sessions**.
 
 **Résultat attendu :** les paramètres apparaissent comme **Activé** dans les dossiers **Délais d'expiration de session**, **Connexions**, **Redirection de périphérique et de ressource** et **Redirection d'imprimante**.
 
-## \[SES1\]Mettez à jour et vérifiez les stratégies
+## 8. \[SES1\]Mettez à jour et vérifiez les stratégies
 
 Sur chaque hôte de session :
 
@@ -169,11 +143,11 @@ gpresult /r /scope computer
 
 # Mise en place de l'impression
 
-## \[CLI\]Vérifiez l'imprimante locale
+## 9. \[CLI\]Vérifiez l'imprimante locale
 
 Sur RDS-CLI1, dans **Paramètres** \\ **Bluetooth et appareils** \\ **Imprimantes et scanners**, vérifiez que **Microsoft Print to PDF** est l'imprimante par défaut.
 
-## \[CLI\]Vérifiez la redirection Easy Print
+## 10. \[CLI\]Vérifiez la redirection Easy Print
 
 Connectez-vous avec **AVAEDOS\\lthobois** au bureau **RdsSesColl1**. Dans la session, ouvrez **Imprimantes et scanners**.
 
@@ -185,17 +159,17 @@ Connectez-vous avec **AVAEDOS\\lthobois** au bureau **RdsSesColl1**. Dans la ses
 
 # Gestion des sessions
 
-## \[CB1\]Prenez le contrôle de la session de lthobois
+## 11. \[CB1\]Prenez le contrôle de la session de lthobois
 
 Laissez la session de **lthobois** ouverte sur RDS-CLI1.
 
 Sur RDS-CBROKER1, dans **Server Manager** \\ **Remote Desktop Services** \\ **Collections** \\ **RdsSesColl1**, section **Connections**, cliquez avec le bouton droit sur la session de **lthobois** puis sélectionnez **Shadow**. Choisissez **Control** et laissez cochée **Prompt for user consent**.
 
-## \[CLI\]Acceptez la demande de prise de contrôle
+## 12. \[CLI\]Acceptez la demande de prise de contrôle
 
 **Résultat attendu :** dans la session de **lthobois**, une fenêtre demande l'autorisation de contrôle. Après acceptation, l'administrateur voit et pilote la session.
 
-## \[CB1\]Envoyez un message et déconnectez la session
+## 13. \[CB1\]Envoyez un message et déconnectez la session
 
 ```powershell
 $s = Get-RDUserSession -ConnectionBroker rds-cbroker1.avaedos.lan | Where-Object UserName -eq "lthobois"

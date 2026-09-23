@@ -15,7 +15,7 @@ Sécuriser l'accès à la plateforme : approbation de l'éditeur des fichiers RD
 
 # Approbation automatique de l'éditeur
 
-## \[CB1\]Notez l'empreinte du certificat de publication
+## 1. \[CB1\]Notez l'empreinte du certificat de publication
 
 ```powershell
 Import-Module RemoteDesktop
@@ -24,7 +24,7 @@ Import-Module RemoteDesktop
 
 Notez l'empreinte : elle identifie l'éditeur des fichiers RDP d'Avaedos.
 
-## \[DC\]Créez la stratégie GPO RD Clients SSO liée à l'UO RD Clients
+## 2. \[DC\]Créez la stratégie GPO RD Clients SSO liée à l'UO RD Clients
 
 Ouvrez **Group Policy Management**, cliquez avec le bouton droit sur **RD Clients**, puis sur **Create a GPO in this domain, and Link it here**. Nommez la stratégie **GPO RD Clients SSO**.
 
@@ -34,13 +34,13 @@ Ouvrez **Specify SHA1 thumbprints of certificates representing trusted .rdp publ
 
 Dans le même dossier, ouvrez **Allow .rdp files from unknown publishers** et sélectionnez **Disabled** : les fichiers RDP non signés ou d'éditeurs inconnus sont bloqués.
 
-## \[DC\]Activez l'authentification unique vers les serveurs RDS
+## 3. \[DC\]Activez l'authentification unique vers les serveurs RDS
 
 Dans **GPO RD Clients SSO**, développez **Computer Configuration** \\ **Policies** \\ **Administrative Templates** \\ **System** \\ **Credentials Delegation**.
 
 Ouvrez **Allow delegating default credentials**, sélectionnez **Enabled** puis cliquez sur **Show**. Ajoutez la ligne **TERMSRV/\*.avaedos.lan**.
 
-## \[CLI\]Mettez à jour les stratégies et testez
+## 4. \[CLI\]Mettez à jour les stratégies et testez
 
 ```powershell
 gpupdate /force
@@ -54,7 +54,7 @@ Fermez puis rouvrez la session Windows de **lthobois** sur RDS-CLI1, puis lancez
 
 # Ajout de la passerelle
 
-## \[CB1\]Ajoutez le rôle de passerelle sur RDS-GATEWAY1
+## 5. \[CB1\]Ajoutez le rôle de passerelle sur RDS-GATEWAY1
 
 ```powershell
 $mdp = ConvertTo-SecureString "P@ssw0rd" -AsPlainText -Force
@@ -72,7 +72,7 @@ Set-RDDeploymentGatewayConfiguration -GatewayMode Custom `
 
 **Vérification :** `Get-RDServer -ConnectionBroker rds-cbroker1.avaedos.lan` affiche **RDS-GATEWAY** sur RDS-GATEWAY1 ; `Get-RDCertificate` affiche le rôle **RDGateway** au niveau **Trusted**.
 
-## \[GTW1\]Restreignez les stratégies CAP et RAP
+## 6. \[GTW1\]Restreignez les stratégies CAP et RAP
 
 L'ajout du rôle crée des stratégies par défaut, trop larges. La CAP définit qui peut utiliser la passerelle ; la RAP définit vers quelles machines.
 
@@ -84,7 +84,7 @@ Sous **Resource Authorization Policies**, ouvrez la stratégie existante. Dans l
 
 **Résultat attendu :** une CAP et une RAP, toutes deux limitées à **RDS Users**.
 
-## \[GTW1\]Vérifiez l'écoute de la passerelle
+## 7. \[GTW1\]Vérifiez l'écoute de la passerelle
 
 ```powershell
 Get-NetTCPConnection -LocalPort 443 -State Listen
@@ -95,7 +95,7 @@ Get-NetUDPEndpoint -LocalPort 3391
 
 # Installation du client web
 
-## \[GTW1\]Installez et publiez le client web
+## 8. \[GTW1\]Installez et publiez le client web
 
 Le client web exige une passerelle dans le déploiement, un mode de licence par utilisateur et le certificat du Connection Broker.
 
@@ -118,7 +118,7 @@ Un avertissement sur les CAL par périphérique peut s'afficher : il est sans ob
 
 **Vérification :** `Get-RDWebClientPackage` affiche la version installée et la colonne **Published**.
 
-## \[CLI\]Testez le client web depuis le réseau interne
+## 9. \[CLI\]Testez le client web depuis le réseau interne
 
 Dans **Microsoft Edge**, ouvrez **https://rds.avaedos.lan/RDWeb/webclient/index.html** et connectez-vous avec **AVAEDOS\\lthobois**.
 

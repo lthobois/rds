@@ -17,7 +17,7 @@ Supprimer les points de défaillance uniques : Connection Broker en haute dispon
 
 RDS-CBROKER2 et RDS-GATEWAY2 existent déjà : le script de préparation les a déployés. Aucune machine n'est à créer dans cet atelier. Configurez-les avant de vous en servir : ouvrez une session avec le compte local **Administrator** et le mot de passe **P@ssw0rd**.
 
-## \[CB2\]Configurez RDS-CBROKER2
+## 1. \[CB2\]Configurez RDS-CBROKER2
 
 ```powershell
 $carte = (Get-NetAdapter | Where-Object Status -eq "Up").Name
@@ -30,7 +30,7 @@ Add-Computer -DomainName "avaedos.lan" -NewName RDS-CBROKER2 -Credential $cred `
     -OUPath "OU=RD Servers,DC=avaedos,DC=lan" -Restart
 ```
 
-## \[GTW2\]Configurez RDS-GATEWAY2
+## 2. \[GTW2\]Configurez RDS-GATEWAY2
 
 ```powershell
 $carte = (Get-NetAdapter | Where-Object Status -eq "Up").Name
@@ -45,7 +45,7 @@ Add-Computer -DomainName "avaedos.lan" -NewName RDS-GATEWAY2 -Credential $cred `
 
 **Vérification :** `(Get-CimInstance Win32_ComputerSystem).Domain` renvoie **avaedos.lan** sur les deux serveurs.
 
-## \[DC\]Ajoutez les nouveaux serveurs au groupe RDS Servers
+## 3. \[DC\]Ajoutez les nouveaux serveurs au groupe RDS Servers
 
 ```powershell
 Add-ADGroupMember "RDS Servers" -Members "RDS-CBROKER2$", "RDS-GATEWAY2$"
@@ -57,7 +57,7 @@ Les deux enregistrements **rds-farm** forment le tourniquet DNS qui répartit le
 
 # Haute disponibilité du Connection Broker
 
-## \[DC\]Installez SQL Server 2025 Express
+## 4. \[DC\]Installez SQL Server 2025 Express
 
 SQL Server Express suffit pour le laboratoire, où il est hébergé sur RDS-DC1 pour économiser une machine. **En production, on ne fait pas cela** : Microsoft déconseille explicitement d'installer SQL Server sur un contrôleur de domaine, et la base du Connection Broker est placée sur un SQL Server redondant ou sur Azure SQL Database.
 
@@ -72,7 +72,7 @@ New-NetFirewallRule -DisplayName "SQL Server" -Direction Inbound `
 
 **Vérification :** `Get-Service MSSQLSERVER` est à l'état **Running** ; depuis RDS-CBROKER1, `Test-NetConnection rds-dc1 -Port 1433` réussit.
 
-## \[DC\]Autorisez le groupe RDS Servers à créer la base
+## 5. \[DC\]Autorisez le groupe RDS Servers à créer la base
 
 Les Connection Brokers accèdent à la base avec leur compte ordinateur, membre du groupe **RDS Servers**.
 
@@ -89,7 +89,7 @@ $cnx.Close()
 
 Le rôle **dbcreator** autorise la création de la base par le premier Connection Broker. Le second devra aussi entrer **dans** la base, créée et possédée par le premier : ce droit est accordé plus loin, une fois la base existante.
 
-## \[CB1\]\[CB2\]Installez le pilote ODBC et redémarrez
+## 6. \[CB1\]\[CB2\]Installez le pilote ODBC et redémarrez
 
 Chaque Connection Broker se connecte à SQL Server par le pilote ODBC désigné dans la chaîne de connexion. Le redémarrage prend en compte l'appartenance au groupe **RDS Servers**.
 
@@ -105,7 +105,7 @@ Restart-Computer
 
 **Vérification :** `Get-OdbcDriver -Name "ODBC Driver 17 for SQL Server"` renvoie le pilote.
 
-## \[CB1\]Configurez le Connection Broker en haute disponibilité
+## 7. \[CB1\]Configurez le Connection Broker en haute disponibilité
 
 Après le redémarrage, le service **RDMS** met une à deux minutes à démarrer. Lancée trop tôt, la commande échoue sur **A deployment is not present**. Attendez que la commande suivante renvoie la liste des serveurs :
 
@@ -132,7 +132,7 @@ La commande affiche **rds-farm.avaedos.lan** comme nom d'accès client.
 
 **Un point à retenir :** **rds-farm.avaedos.lan** est un tourniquet DNS, sans compte ni SPN Kerberos. Il sert aux **connexions des utilisateurs**, jamais au paramètre `-ConnectionBroker` des commandes d'administration : celles-ci échouent alors sur *The RD Connection Broker server is not available*. L'administration continue de désigner un serveur par son nom réel, ici **rds-cbroker1.avaedos.lan**.
 
-## \[DC\]Donnez au groupe RDS Servers l'accès à la base RDCB-DB
+## 8. \[DC\]Donnez au groupe RDS Servers l'accès à la base RDCB-DB
 
 La base appartient au Connection Broker qui l'a créée. Sans droit à l'intérieur de la base, le second se voit refuser l'accès : **The database is not reachable from the specified RD Connection Broker server**.
 
@@ -149,7 +149,7 @@ $cnx.Close()
 
 **Vérification :** les membres du rôle **db_owner** de RDCB-DB sont **dbo** et **AVAEDOS\\RDS Servers**.
 
-## \[CB2\]Autorisez l'interrogation WMI
+## 9. \[CB2\]Autorisez l'interrogation WMI
 
 Le déploiement lit la version du système du serveur à ajouter par **WMI**, et non par WinRM. Si le pare-feu bloque WMI, la lecture échoue et l'ajout est refusé avec un message trompeur : *has to be same OS version as the active RD Connection Broker server*, alors que les deux systèmes sont identiques.
 
@@ -159,7 +159,7 @@ Enable-NetFirewallRule -DisplayGroup "Windows Management Instrumentation (WMI)"
 
 **Vérification :** depuis RDS-CBROKER1, `Get-CimInstance Win32_OperatingSystem -CimSession (New-CimSession -ComputerName rds-cbroker2.avaedos.lan -SessionOption (New-CimSessionOption -Protocol Dcom))` renvoie le nom du système.
 
-## \[CB1\]Ajoutez RDS-CBROKER2 au déploiement
+## 10. \[CB1\]Ajoutez RDS-CBROKER2 au déploiement
 
 Tous les serveurs du déploiement doivent être allumés : l'ajout d'un Connection Broker les interroge tous et échoue si l'un d'eux ne répond pas.
 
@@ -172,7 +172,7 @@ Add-RDServer -Server rds-cbroker2.avaedos.lan -Role RDS-CONNECTION-BROKER `
 
 # Ferme de passerelles et d'accès Web
 
-## \[CB1\]Ajoutez RDS-GATEWAY2 au déploiement
+## 11. \[CB1\]Ajoutez RDS-GATEWAY2 au déploiement
 
 RDS-GATEWAY2 reçoit les mêmes rôles que RDS-GATEWAY1 : accès Web et passerelle.
 
@@ -189,7 +189,7 @@ foreach ($role in "RDRedirector","RDPublishing","RDWebAccess","RDGateway") {
 
 Le certificat est réaffecté pour être déployé sur RDS-CBROKER2 et RDS-GATEWAY2. Il couvre déjà leurs noms, prévus dès l'atelier 1.
 
-## \[GTW2\]Reproduisez les stratégies et le client web
+## 12. \[GTW2\]Reproduisez les stratégies et le client web
 
 Les stratégies CAP et RAP sont stockées sur chaque passerelle. Dans **Remote Desktop Gateway Manager** sur RDS-GATEWAY2, restreignez la CAP et la RAP au groupe **AVAEDOS\\RDS Users**, comme à l'atelier 3. En production, un serveur NPS central partage les CAP entre les passerelles.
 
@@ -197,7 +197,7 @@ Dans les propriétés de chaque passerelle, onglet **Server Farm**, ajoutez **rd
 
 Installez ensuite le client web sur RDS-GATEWAY2 avec les mêmes commandes qu'à l'atelier 3.
 
-## \[GTW1\]\[GTW2\]Installez l'équilibrage de charge réseau
+## 13. \[GTW1\]\[GTW2\]Installez l'équilibrage de charge réseau
 
 Les deux passerelles répondent à la même adresse, **172.16.1.119**, portée par un cluster NLB.
 
@@ -222,7 +222,7 @@ Get-NlbCluster -HostName rds-gateway1 | Add-NlbClusterNode -NewNodeName rds-gate
 
 **Vérification :** `Get-NlbClusterNode -HostName rds-gateway1` affiche les deux nœuds à l'état **Converged**.
 
-## \[DC\]Faites pointer rds.avaedos.lan vers la ferme
+## 14. \[DC\]Faites pointer rds.avaedos.lan vers la ferme
 
 ```powershell
 Remove-DnsServerResourceRecord -ZoneName "avaedos.lan" -Name "rds" -RRType A -Force
@@ -235,7 +235,7 @@ Sur RDS-CLI1, videz le cache DNS pour prendre en compte la nouvelle adresse : `i
 
 # Tests de tolérance aux pannes
 
-## \[MP\]Testez la perte d'un Connection Broker
+## 15. \[MP\]Testez la perte d'un Connection Broker
 
 ```powershell
 Stop-VM -Name RDS-CBROKER1 -Force
@@ -257,7 +257,7 @@ Set-RDActiveManagementServer -ManagementServer rds-cbroker2.avaedos.lan
 Start-VM -Name RDS-CBROKER1
 ```
 
-## \[MP\]Testez la perte d'une passerelle
+## 16. \[MP\]Testez la perte d'une passerelle
 
 ```powershell
 Stop-VM -Name RDS-GATEWAY1 -Force
@@ -275,11 +275,11 @@ Start-VM -Name RDS-GATEWAY1
 
 # Maintenance d'un hôte de session
 
-## \[CLI\]Ouvrez deux sessions
+## 17. \[CLI\]Ouvrez deux sessions
 
 Connectez **lthobois** et **bnedjimi** depuis RDS-CLI1 au bureau **RdsSesColl1**, par deux connexions distinctes (par exemple le client web pour l'un, `mstsc` pour l'autre).
 
-## \[CB1\]Drainez RDS-SESSION1 et prévenez ses utilisateurs
+## 18. \[CB1\]Drainez RDS-SESSION1 et prévenez ses utilisateurs
 
 ```powershell
 Set-RDSessionHost -SessionHost rds-session1.avaedos.lan -NewConnectionAllowed No `
@@ -293,7 +293,7 @@ Get-RDUserSession -ConnectionBroker rds-cbroker1.avaedos.lan |
 
 **Vérification :** fermez la session de l'utilisateur hébergé sur RDS-SESSION1, reconnectez-le, puis relancez `Get-RDUserSession` : il est désormais sur RDS-SESSION2.
 
-## \[CB1\]Remettez RDS-SESSION1 en service
+## 19. \[CB1\]Remettez RDS-SESSION1 en service
 
 ```powershell
 Set-RDSessionHost -SessionHost rds-session1.avaedos.lan -NewConnectionAllowed Yes `
@@ -302,7 +302,7 @@ Set-RDSessionHost -SessionHost rds-session1.avaedos.lan -NewConnectionAllowed Ye
 
 # Supervision et diagnostic
 
-## \[SES1\]Mesurez le délai d'entrée utilisateur
+## 20. \[SES1\]Mesurez le délai d'entrée utilisateur
 
 Pendant qu'une session est ouverte sur RDS-SESSION1 :
 
@@ -312,7 +312,7 @@ Get-Counter "\User Input Delay per Session(*)\Max Input Delay" -SampleInterval 2
 
 **Interprétation :** la valeur mesure le temps de traitement des actions clavier et souris dans chaque session. Des valeurs durablement élevées traduisent une saturation de l'hôte, ressentie comme une lenteur par l'utilisateur.
 
-## \[CB1\]Diagnostiquez la panne injectée par le formateur
+## 21. \[CB1\]Diagnostiquez la panne injectée par le formateur
 
 Le formateur provoque une panne sur votre plateforme. Appliquez la méthode vue en cours :
 

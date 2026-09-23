@@ -15,7 +15,7 @@ Répondre au besoin du bureau d'études : des postes virtuels Windows 11 regroup
 
 # Préparation des hôtes de virtualisation
 
-## \[MP\]Créez RDS-HYPERV1 et RDS-HYPERV2
+## 1. \[MP\]Créez RDS-HYPERV1 et RDS-HYPERV2
 
 Les hôtes de virtualisation exécutent eux-mêmes des machines virtuelles : ils exigent la virtualisation imbriquée, une mémoire statique et l'usurpation d'adresses MAC pour que les postes VDI accèdent au réseau. Ces réglages se font machine arrêtée, avant le premier démarrage.
 
@@ -77,7 +77,7 @@ Add-ADGroupMember "RDS Servers" -Members "RDS-HYPERV1$", "RDS-HYPERV2$"
 
 Si la mémoire de la machine physique ne permet pas deux hôtes, réalisez l'atelier avec RDS-HYPERV1 seul et deux postes sur cet hôte.
 
-## \[CB1\]Ajoutez les hôtes de virtualisation au déploiement
+## 2. \[CB1\]Ajoutez les hôtes de virtualisation au déploiement
 
 ```powershell
 Import-Module RemoteDesktop
@@ -90,7 +90,7 @@ Le rôle installe Hyper-V sur chaque hôte et le redémarre.
 
 **Vérification :** sur chaque hôte, `Get-WindowsFeature Hyper-V` est à l'état **Installed**.
 
-## \[HV1\]\[HV2\]Créez le commutateur virtuel des postes VDI
+## 3. \[HV1\]\[HV2\]Créez le commutateur virtuel des postes VDI
 
 Les postes virtuels doivent rejoindre le réseau d'Avaedos pour joindre le domaine et obtenir une adresse DHCP. Le commutateur porte le même nom sur les deux hôtes.
 
@@ -104,7 +104,7 @@ Le dossier **C:\\VDI** accueille les disques des postes virtuels créés sur l'h
 
 La connexion réseau de l'hôte est brièvement interrompue pendant la création du commutateur.
 
-## \[HV1\]Importez le modèle W11-GOLD
+## 4. \[HV1\]Importez le modèle W11-GOLD
 
 Le modèle est une machine virtuelle Windows 11 Enterprise de génération 2, avec démarrage sécurisé et TPM virtuel, généralisée par `sysprep /generalize /oobe /shutdown /mode:vm`. Il est fourni pour éviter une préparation longue.
 
@@ -131,7 +131,7 @@ Le modèle doit rester arrêté : le démarrer annule sa généralisation.
 
 **Vérification :** `Get-VM W11-GOLD` affiche l'état **Off** et la génération **2**.
 
-## \[DC\]Autorisez les Connection Brokers à créer les comptes des postes
+## 5. \[DC\]Autorisez les Connection Brokers à créer les comptes des postes
 
 Le Connection Broker joint lui-même les postes virtuels au domaine : il doit pouvoir créer des comptes ordinateurs dans l'UO **RD VDI**. Le groupe **RDS Servers** contient les deux Connection Brokers.
 
@@ -143,7 +143,7 @@ dsacls $ou /I:S /G "AVAEDOS\RDS Servers:GA;;computer"
 
 # Création de la collection
 
-## \[CB1\]Créez la collection regroupée RdsVdiColl1
+## 6. \[CB1\]Créez la collection regroupée RdsVdiColl1
 
 ```powershell
 New-RDVirtualDesktopCollection -CollectionName "RdsVdiColl1" `
@@ -168,13 +168,13 @@ Get-RDVirtualDesktop -CollectionName "RdsVdiColl1" -ConnectionBroker rds-cbroker
 
 Sur RDS-DC1, `Get-ADComputer -SearchBase "OU=RD VDI,DC=avaedos,DC=lan" -Filter *` liste les deux comptes et `Get-DhcpServerv4Lease -ScopeId 172.16.0.0` montre leurs adresses.
 
-## \[CB1\]Vérifiez le retour à l'état initial
+## 7. \[CB1\]Vérifiez le retour à l'état initial
 
 Dans **Server Manager** \\ **Remote Desktop Services** \\ **Collections** \\ **RdsVdiColl1**, ouvrez **Tasks** \\ **Edit Properties** puis **Virtual Desktop Settings** et vérifiez l'option **Automatically roll back the virtual desktop when the user logs off**.
 
 # Utilisation du poste virtuel
 
-## \[CLI\]Connectez-vous au poste virtuel
+## 8. \[CLI\]Connectez-vous au poste virtuel
 
 Dans le client web **https://rds.avaedos.lan/RDWeb/webclient/index.html**, connectez-vous avec **AVAEDOS\\bnedjimi**.
 
@@ -182,7 +182,7 @@ Dans le client web **https://rds.avaedos.lan/RDWeb/webclient/index.html**, conne
 
 **Vérification :** dans la session, `hostname` renvoie **VDI-0** ou **VDI-1** ; `(Get-CimInstance Win32_OperatingSystem).Caption` renvoie **Microsoft Windows 11 Enterprise**.
 
-## \[CLI\]Vérifiez le retour à l'état initial
+## 9. \[CLI\]Vérifiez le retour à l'état initial
 
 Créez un fichier **test.txt** sur le bureau du poste virtuel, puis fermez la session Windows (**Se déconnecter**).
 
