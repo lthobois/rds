@@ -174,7 +174,7 @@ Dans **Server Manager** \\ **Remote Desktop Services** \\ **Collections** \\ **R
 
 # Utilisation du poste virtuel
 
-## \[EXT\]Connectez-vous au poste virtuel
+## \[CLI\]Connectez-vous au poste virtuel
 
 Dans le client web **https://rds.avaedos.lan/RDWeb/webclient/index.html**, connectez-vous avec **AVAEDOS\\bnedjimi**.
 
@@ -182,7 +182,7 @@ Dans le client web **https://rds.avaedos.lan/RDWeb/webclient/index.html**, conne
 
 **Vérification :** dans la session, `hostname` renvoie **VDI-0** ou **VDI-1** ; `(Get-CimInstance Win32_OperatingSystem).Caption` renvoie **Microsoft Windows 11 Enterprise**.
 
-## \[EXT\]Vérifiez le retour à l'état initial
+## \[CLI\]Vérifiez le retour à l'état initial
 
 Créez un fichier **test.txt** sur le bureau du poste virtuel, puis fermez la session Windows (**Se déconnecter**).
 

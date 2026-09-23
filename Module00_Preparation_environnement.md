@@ -20,14 +20,12 @@ Chaque étape est précédée du nom de la machine sur laquelle elle est réalis
 | Repère | Machine | Rôle | Configurée à |
 |---|---|---|---|
 | \[MP\] | Machine physique | Hôte Hyper-V de l'environnement | — |
-| \[DC\] | RDS-DC1 | Contrôleur de domaine, DNS, DHCP, autorité de certification, partage des profils | Préparation |
+| \[DC\] | RDS-DC1 | Contrôleur de domaine, DNS, DHCP, autorité de certification, partage des profils, base SQL du Connection Broker | Préparation |
 | \[SES1\] à \[SES4\] | RDS-SESSION1 à RDS-SESSION4 | Hôtes de session | Atelier 1 |
 | \[CB1\] / \[CB2\] | RDS-CBROKER1 / RDS-CBROKER2 | Connection Broker, licences sur RDS-CBROKER1 | Atelier 1 / atelier 4 |
 | \[GTW1\] / \[GTW2\] | RDS-GATEWAY1 / RDS-GATEWAY2 | Accès Web et passerelle | Atelier 1 / atelier 4 |
-| \[SQL\] | RDS-SQL1 | Base de données du Connection Broker | Atelier 4 |
 | \[HV1\] / \[HV2\] | RDS-HYPERV1 / RDS-HYPERV2 | Hôtes de virtualisation VDI | Atelier 5 |
 | \[CLI\] | RDS-CLI1 | Poste Windows 11 interne, membre du domaine | Atelier 1 |
-| \[EXT\] | RDS-EXT1 | Poste Windows 11 externe, hors domaine | Atelier 3 |
 
 Les commandes PowerShell s'exécutent dans une console **Windows PowerShell** lancée en tant qu'administrateur. Sauf indication contraire, ouvrez la session avec le compte **AVAEDOS\\Administrator** et le mot de passe **P@ssw0rd**.
 
@@ -43,12 +41,10 @@ Le commutateur est celui indiqué par le formateur : **Reseau Salle** pour un r�
 |---|---|
 | RDS-DC1 | 172.16.1.1 |
 | RDS-CLI1 | 172.16.1.101 |
-| RDS-EXT1 | 172.16.1.102 |
 | RDS-SESSION1 à RDS-SESSION4 | 172.16.1.111 à 172.16.1.114 |
 | RDS-CBROKER1, RDS-CBROKER2 | 172.16.1.115, 172.16.1.116 |
 | RDS-GATEWAY1, RDS-GATEWAY2 | 172.16.1.117, 172.16.1.118 |
 | Ferme de passerelles `rds.avaedos.lan` (atelier 4) | 172.16.1.119 |
-| RDS-SQL1 | 172.16.1.120 |
 | RDS-HYPERV1, RDS-HYPERV2 | 172.16.1.121, 172.16.1.122 |
 | Postes VDI | 172.16.1.200 à 172.16.1.250 (DHCP) |
 
@@ -143,7 +139,7 @@ Deploy-VMTemplate -Name RDS-DC1 -OperatingSystem Windows2025Full
 Deploy-VMTemplate -Name RDS-CBROKER1 -OperatingSystem Windows2025Full
 Deploy-VMTemplate -Name RDS-SESSION1 -OperatingSystem Windows2025Full
 Deploy-VMTemplate -Name RDS-SESSION2 -OperatingSystem Windows2025Full
-Deploy-VMTemplate -Name RDS-CLI1 -OperatingSystem Windows11US
+Deploy-VMTemplate -Name RDS-CLI1 -OperatingSystem Windows11FR
 
 Deploy-VMTemplate -Name RDS-SESSION3 -OperatingSystem Windows2025Full
 Deploy-VMTemplate -Name RDS-SESSION4 -OperatingSystem Windows2025Full
@@ -164,7 +160,7 @@ Set-VMHost -EnableEnhancedSessionMode $true -NumaSpanningEnabled $true
 
 Le mode session étendu permet le copier-coller et la redirection de périphériques vers les machines virtuelles ; l'étalement NUMA évite qu'une machine soit refusée faute de mémoire sur un seul nœud. La ligne `Remove-VMEnvironment` en commentaire sert à repartir d'un environnement vierge.
 
-Les machines des ateliers 4 et 5 — **RDS-SQL1**, **RDS-HYPERV1**, **RDS-HYPERV2** — et le poste hors domaine **RDS-EXT1** sont déployées au moment de l'atelier concerné, avec les commandes données sur place.
+Les hôtes de virtualisation de l'atelier 5 — **RDS-HYPERV1** et **RDS-HYPERV2** — sont déployés au moment de l'atelier concerné, avec les commandes données sur place.
 
 Les images ISO ne servent qu'à l'atelier 4. Le chemin est repéré dès maintenant pour que les commandes suivantes puissent s'y référer.
 

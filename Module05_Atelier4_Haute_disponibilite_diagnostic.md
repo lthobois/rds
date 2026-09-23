@@ -229,7 +229,7 @@ Remove-DnsServerResourceRecord -ZoneName "avaedos.lan" -Name "rds" -RRType A -Fo
 Add-DnsServerResourceRecordA -ZoneName "avaedos.lan" -Name "rds" -IPv4Address 172.16.1.119
 ```
 
-Sur RDS-CLI1 et RDS-EXT1, videz le cache DNS pour prendre en compte la nouvelle adresse : `ipconfig /flushdns`.
+Sur RDS-CLI1, videz le cache DNS pour prendre en compte la nouvelle adresse : `ipconfig /flushdns`.
 
 **Interprétation :** le nom utilisé par les clients ne change pas ; seule l'adresse qu'il désigne passe d'un serveur à la ferme.
 
@@ -263,7 +263,7 @@ Start-VM -Name RDS-CBROKER1
 Stop-VM -Name RDS-GATEWAY1 -Force
 ```
 
-Depuis RDS-EXT1, reconnectez-vous au client web puis au bureau.
+Depuis RDS-CLI1, reconnectez-vous au client web puis au bureau.
 
 **Résultat attendu :** la connexion aboutit par RDS-GATEWAY2, après la convergence du cluster NLB.
 
@@ -275,9 +275,9 @@ Start-VM -Name RDS-GATEWAY1
 
 # Maintenance d'un hôte de session
 
-## \[CLI\]\[EXT\]Ouvrez deux sessions
+## \[CLI\]Ouvrez deux sessions
 
-Connectez **lthobois** depuis RDS-CLI1 et **bnedjimi** depuis RDS-EXT1 au bureau **RdsSesColl1**.
+Connectez **lthobois** et **bnedjimi** depuis RDS-CLI1 au bureau **RdsSesColl1**, par deux connexions distinctes (par exemple le client web pour l'un, `mstsc` pour l'autre).
 
 ## \[CB1\]Drainez RDS-SESSION1 et prévenez ses utilisateurs
 
@@ -353,6 +353,8 @@ La haute disponibilité du Connection Broker déplace le risque vers SQL Server 
 | **has to be same OS version** alors que les deux serveurs sont identiques | Lecture WMI bloquée par le pare-feu du serveur à ajouter | Activer le groupe de règles **Windows Management Instrumentation (WMI)** |
 | **The database is not reachable** sur le second Connection Broker | Le groupe **RDS Servers** n'a pas de droit dans la base RDCB-DB | L'ajouter au rôle **db_owner** de la base |
 | **deployment servers were not reachable** | Un serveur du déploiement est éteint | Allumer tous les serveurs avant d'ajouter un Connection Broker |
+| **The server pool does not match the RD Connection Brokers that are in it** dans Server Manager, les **deux** brokers listés | Le serveur qui héberge la base **RDCB-DB** est injoignable : sans base, le service **tssdis** ne démarre sur aucun des deux | Vérifier `Test-NetConnection <serveur SQL> -Port 1433` depuis un broker, puis `Get-Service tssdis` ; rallumer le serveur de base avant tout le reste |
+| Même message, mais un seul broker listé | Services **rdms**, **tssdis** ou **tscpubrpc** pas encore démarrés après le redémarrage | Attendre une à deux minutes ; si le serveur de gestion actif est indisponible, `Set-RDActiveManagementServer` désigne l'autre |
 | Échec de connexion à RDS-DC1 | Groupe non pris en compte ou port fermé | Redémarrer les Connection Brokers, vérifier la règle de pare-feu 1433 |
 | Erreur de certificat après l'ajout d'un serveur | Certificat non redéployé | Relancer `Set-RDCertificate` pour les quatre rôles |
 | Refus sur une seule des deux passerelles | CAP et RAP non reproduites sur RDS-GATEWAY2 | Aligner les stratégies ou utiliser un NPS central |

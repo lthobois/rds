@@ -9,9 +9,9 @@ Cet atelier se réalise individuellement, sur votre propre environnement. Il s'a
 
 # Objectif
 
-Sécuriser l'accès à la plateforme : approbation de l'éditeur des fichiers RDP, authentification unique, passerelle RDS limitée aux utilisateurs autorisés et client web, testés depuis un poste hors domaine.
+Sécuriser l'accès à la plateforme : approbation de l'éditeur des fichiers RDP, authentification unique, passerelle RDS limitée aux utilisateurs autorisés et client web.
 
-**Livrable :** **lthobois** se connecte depuis RDS-EXT1, poste hors domaine, par le client web et la passerelle **rds.avaedos.lan** ; un compte non autorisé est refusé.
+**Livrable :** **lthobois** se connecte depuis RDS-CLI1 par le client web et la passerelle **rds.avaedos.lan**.
 
 # Approbation automatique de l'éditeur
 
@@ -124,77 +124,6 @@ Dans **Microsoft Edge**, ouvrez **https://rds.avaedos.lan/RDWeb/webclient/index.
 
 **Résultat attendu :** le client web affiche le bureau et les deux RemoteApp ; le Bloc-notes s'ouvre dans l'onglet du navigateur.
 
-# Connexion depuis un poste hors domaine
-
-## \[MP\]Créez le poste RDS-EXT1
-
-```powershell
-Deploy-VMTemplate -Name "RDS-EXT1" -OperatingSystem Windows11US
-Wait-VMToStart -VMName "RDS-EXT1"
-Get-VMIntegrationService -VMName "RDS-EXT1" | Where-Object Id -like "*6C09BB55*" | Enable-VMIntegrationService
-```
-
-RDS-EXT1 reste hors du domaine : ne le joignez pas à **avaedos.lan**.
-
-## \[EXT\]Configurez le poste hors domaine
-
-RDS-EXT1 simule un poste personnel : il n'est pas membre du domaine et ne fait pas confiance à l'autorité de certification d'Avaedos. En laboratoire, il est sur le même réseau que les serveurs ; en production, il se connecterait depuis Internet et seule la passerelle serait joignable.
-
-Ouvrez une session avec le compte local fourni par le formateur, puis :
-
-```powershell
-$carte = (Get-NetAdapter | Where-Object Status -eq "Up").Name
-New-NetIPAddress -InterfaceAlias $carte -IPAddress 172.16.1.102 -PrefixLength 16 -DefaultGateway 172.16.1.254
-Set-DnsClientServerAddress -InterfaceAlias $carte -ServerAddresses 172.16.1.1
-Start-Sleep -Seconds 5
-Rename-Computer -NewName RDS-EXT1 -Restart
-```
-
-## \[DC\]Exportez le certificat de l'autorité racine
-
-```powershell
-New-Item -ItemType Directory -Path C:\Certificats -Force
-certutil -ca.cert C:\Certificats\RDS-CA.cer
-New-SmbShare -Name "Certificats" -Path C:\Certificats -ReadAccess "AVAEDOS\Domain Users"
-```
-
-Le partage **Certificats** existe le temps de l'atelier : RDS-EXT1 n'étant pas membre du domaine, il ne reçoit pas l'autorité racine par stratégie de groupe.
-
-## \[EXT\]Approuvez l'autorité de certification d'Avaedos
-
-Ouvrez **\\\\RDS-DC1\\Certificats** avec le compte **AVAEDOS\\lthobois**, copiez **RDS-CA.cer** dans **C:\\Certificats**, puis :
-
-```powershell
-Import-Certificate -FilePath C:\Certificats\RDS-CA.cer -CertStoreLocation Cert:\LocalMachine\Root
-```
-
-En production, le certificat de la passerelle est émis par une autorité publique : cette étape n'existe pas pour les utilisateurs.
-
-## \[EXT\]Connectez-vous par le client web
-
-Dans **Microsoft Edge**, ouvrez **https://rds.avaedos.lan/RDWeb/webclient/index.html** et connectez-vous avec **AVAEDOS\\lthobois**. Lancez le bureau **RdsSesColl1**.
-
-**Résultat attendu :** la session s'ouvre depuis RDS-EXT1, poste hors domaine.
-
-## \[GTW1\]Retrouvez la connexion dans le journal de la passerelle
-
-```powershell
-Get-WinEvent -LogName "Microsoft-Windows-TerminalServices-Gateway/Operational" -MaxEvents 20 |
-    Format-Table TimeCreated, Id, Message -Wrap
-```
-
-**Résultat attendu :** un événement indique que **AVAEDOS\\lthobois** s'est connecté à la ressource, avec l'adresse source **172.16.1.102** : la connexion est bien passée par la passerelle.
-
-## \[EXT\]Vérifiez le refus d'un compte non autorisé
-
-Le portail n'affiche aucune ressource à un compte absent des groupes des collections : le test passe donc par une connexion directe à travers la passerelle.
-
-Lancez **Connexion Bureau à distance** (`mstsc`), cliquez sur **Afficher les options**, onglet **Avancé**, bouton **Paramètres**. Sélectionnez **Utiliser ces paramètres de serveur de passerelle Bureau à distance**, tapez **rds.avaedos.lan** et décochez **Ne pas utiliser de serveur de passerelle Bureau à distance pour les adresses locales**. Dans l'onglet **Général**, tapez **rds-session1.avaedos.lan** puis connectez-vous avec **AVAEDOS\\Administrator**.
-
-**Résultat attendu :** la passerelle refuse la connexion : **Administrator** n'est pas membre de **RDS Users**, la CAP ne l'autorise pas, alors qu'il est administrateur de l'hôte de session.
-
-**Vérification :** le journal de la passerelle contient un événement de refus pour **AVAEDOS\\Administrator** qui cite la stratégie d'autorisation des connexions.
-
 # Démonstration formateur : authentification multifacteur
 
 Le formateur présente l'extension NPS de Microsoft Entra MFA : les CAP de la passerelle sont déportées vers un serveur NPS central, qui ajoute une notification sur l'application Microsoft Authenticator. Cette partie exige un tenant Microsoft Entra et n'est pas réalisée par les participants.
@@ -207,7 +136,7 @@ La passerelle est le seul point d'entrée depuis Internet : elle n'expose que HT
 
 | Symptôme | Cause probable | Correction |
 |---|---|---|
-| « Le certificat de la passerelle n'est pas approuvé » | Autorité racine non importée sur RDS-EXT1 | Importer **RDS-CA** dans **Root** de l'ordinateur |
 | Client web : ressources visibles mais connexion impossible | Certificat du Connection Broker non importé ou passerelle absente | Relancer `Import-RDWebClientBrokerCert` puis `Publish-RDWebClientPackage` |
 | Refus alors que l'utilisateur est autorisé | Groupe modifié dans la CAP mais pas dans la RAP | Aligner les deux stratégies |
 | Session lente par la passerelle | UDP 3391 bloqué | Vérifier `Get-NetUDPEndpoint -LocalPort 3391` et le pare-feu |
+| **Your administrator has set policy that prevents the launching of this RDP file** au lancement d'une RemoteApp | L'empreinte de la stratégie ne correspond pas au certificat qui signe les fichiers RDP, alors que les éditeurs inconnus sont bloqués | Comparer `(Get-RDCertificate -Role RDPublishing).Thumbprint` avec la valeur `TrustedCertThumbprints` du poste, la corriger sans espace, `gpupdate /force`, puis **Mettre à jour maintenant** sur le flux pour retélécharger les fichiers RDP |

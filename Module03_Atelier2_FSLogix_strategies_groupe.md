@@ -65,9 +65,37 @@ Invoke-Command -ComputerName $hotes -ScriptBlock {
 
 En production, ces paramètres se gèrent par stratégie de groupe avec les modèles d'administration FSLogix.
 
+## \[CLI\]Ajoutez le flux des ressources sur le poste
+
+Le flux d'abonnement intègre les ressources publiées au menu **Démarrer**, sans passer par le navigateur. C'est par lui que vous ouvrirez le bureau pour la suite de l'atelier.
+
+Ouvrez une session Windows sur RDS-CLI1 avec **AVAEDOS\\lthobois**, puis **Panneau de configuration** \\ **Connexions RemoteApp et Bureau à distance** \\ **Accéder aux RemoteApp et aux bureaux**.
+
+Saisissez l'adresse du flux :
+
+```
+https://rds.avaedos.lan/RDWeb/Feed/webfeed.aspx
+```
+
+Suivez l'assistant avec le compte **AVAEDOS\\lthobois** et le mot de passe **P@ssw0rd**.
+
+**Résultat attendu :** l'assistant annonce les ressources trouvées, et un dossier **Work Resources (RADC)** apparaît dans le menu **Démarrer** avec le bureau **RdsSesColl1** et les deux RemoteApp.
+
+**Vérification :**
+
+```powershell
+Get-ChildItem "$env:APPDATA\Microsoft\Windows\Start Menu\Programs\Work Resources (RADC)"
+```
+
+Les raccourcis des ressources publiées y figurent.
+
+**Si l'assistant refuse l'adresse :** le poste doit approuver l'autorité **RDS-CA**. Lancez `gpupdate /force`, fermez puis rouvrez la session Windows, et vérifiez que `https://rds.avaedos.lan/RDWeb/` s'ouvre sans avertissement de certificat.
+
 ## \[CLI\]Ouvrez une session et vérifiez le conteneur
 
-Connectez-vous avec **AVAEDOS\\lthobois** au bureau **RdsSesColl1** depuis le portail ou le flux.
+Depuis le dossier **Work Resources (RADC)** du menu **Démarrer**, ouvrez le bureau **RdsSesColl1**.
+
+C'est bien l'ouverture de session sur l'hôte qui déclenche FSLogix : le conteneur est monté par le service au moment où Windows charge le profil, pas avant.
 
 Dans la session, modifiez un paramètre visible : l'arrière-plan du bureau par exemple, puis fermez la session (**Se déconnecter**).
 
@@ -83,7 +111,7 @@ Set-RDSessionHost -SessionHost rds-session1.avaedos.lan -NewConnectionAllowed No
     -ConnectionBroker rds-cbroker1.avaedos.lan
 ```
 
-Reconnectez **lthobois** au bureau.
+Reconnectez **lthobois** au bureau, toujours depuis le dossier **Work Resources (RADC)**.
 
 **Résultat attendu :** la session s'ouvre sur RDS-SESSION2 avec le même arrière-plan.
 
