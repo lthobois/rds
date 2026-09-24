@@ -9,7 +9,7 @@ Cet atelier se réalise individuellement, sur votre propre environnement. Il s'a
 
 # Objectif
 
-Supprimer les points de défaillance uniques : Connection Broker en haute disponibilité avec une base SQL Server, ferme de passerelles et d'accès Web en équilibrage de charge. Pratiquer ensuite la maintenance sans interruption d'un hôte de session et diagnostiquer une panne.
+Supprimer les points de défaillance uniques : Connection Broker en haute disponibilité avec une base SQL Server, ferme de passerelles et d'accès Web en équilibrage de charge. Pratiquer ensuite la maintenance sans interruption d'un hôte de session et mesurer la qualité de l'expérience utilisateur.
 
 **Livrable :** le déploiement fonctionne avec l'un ou l'autre Connection Broker arrêté, et avec l'une ou l'autre passerelle arrêtée ; RDS-SESSION1 peut être drainé sans couper le service.
 
@@ -311,32 +311,6 @@ Get-Counter "\User Input Delay per Session(*)\Max Input Delay" -SampleInterval 2
 ```
 
 **Interprétation :** la valeur mesure le temps de traitement des actions clavier et souris dans chaque session. Des valeurs durablement élevées traduisent une saturation de l'hôte, ressentie comme une lenteur par l'utilisateur.
-
-## 21. \[CB1\]Diagnostiquez la panne injectée par le formateur
-
-Le formateur provoque une panne sur votre plateforme. Appliquez la méthode vue en cours :
-
-1. Reproduisez l'incident : qui, depuis quel poste, vers quelle ressource.
-2. Suivez le parcours de connexion : DNS, passerelle, Connection Broker, hôte de session, licence, profil.
-3. Lisez le journal de l'étape qui échoue.
-4. Corrigez, puis vérifiez avec l'utilisateur.
-
-Journaux utiles :
-
-```powershell
-$journaux = "Microsoft-Windows-TerminalServices-Gateway/Operational",
-            "Microsoft-Windows-TerminalServices-SessionBroker/Operational",
-            "Microsoft-Windows-TerminalServices-RemoteConnectionManager/Operational",
-            "Microsoft-Windows-TerminalServices-LocalSessionManager/Operational"
-foreach ($j in $journaux) {
-    Get-WinEvent -LogName $j -MaxEvents 10 -ErrorAction SilentlyContinue |
-        Select-Object TimeCreated, Id, LevelDisplayName, Message
-}
-```
-
-Chaque journal n'existe que sur les serveurs qui portent le rôle correspondant : exécutez la commande sur le serveur concerné.
-
-**Livrable :** notez l'étape en défaut, le message du journal, la cause et la correction appliquée.
 
 # Ce qu'il faut retenir
 

@@ -77,8 +77,7 @@ Le commutateur est celui indiqué par le formateur : **Reseau Salle** pour un r�
 
 ## Ressources fournies par le formateur
 
-- **Modèles de machines virtuelles** Windows Server 2025 et Windows 11 Enterprise, généralisés, de génération 2 ;
-- **W11-GOLD** : modèle VDI Windows 11 Enterprise généralisé, destiné à l'atelier 5 ;
+- **Modèles de machines virtuelles** Windows Server 2025 et Windows 11 Pro, généralisés, de génération 2 : l'image Windows 11 sert aussi à fabriquer le modèle VDI **W11-GOLD** à l'atelier 5 ;
 - **Dossier des sources**, copié à l'atelier concerné : FSLogix, pilote ODBC Driver 17 for SQL Server, SQL Server 2025 Express, et, en l'absence d'accès Internet, le module et le paquet du client web RDS.
 
 # Préparation de l'environnement
